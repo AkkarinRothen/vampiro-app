@@ -3,304 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Crónica - VTM</title>
+    <title>VTM 5E - Portal de Crónica</title>
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/darkly/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .text-blood { color: #ff3333; }
-        .border-blood { border-left: 4px solid #8a0e0e !important; }
-        .fade-in { animation: fadeIn 0.5s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Roboto+Condensed:wght@300;400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-dark">
+<body>
 
-    <div id="login-screen" class="container d-flex justify-content-center align-items-center vh-100">
-        <div class="card bg-secondary text-white p-4 shadow-lg" style="width: 350px; border-left: 5px solid #800000;">
-            <h2 id="login-title" class="text-center text-danger mb-4">🩸 Acceso Restringido</h2>
+    <div id="login-screen" class="justify-content-center align-items-center">
+        <div class="card bg-dark text-white p-4 shadow-lg" style="width: 380px;">
+            <div class="text-center mb-4">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Vampire-_The_Masquerade_%28Logo%29.svg/960px-Vampire-_The_Masquerade_%28Logo%29.svg.png" width="100" class="mb-2" style="filter: drop-shadow(0 0 5px #ffffff);">
+                <h2 id="login-title" class="text-blood fw-bold">VTM 5E</h2>
+                <small class="text-muted">Gestor de Crónica</small>
+            </div>
             
             <div class="mb-3">
-                <a href="/auth/google" class="btn btn-light w-100 fw-bold d-flex align-items-center justify-content-center">
+                <a href="/auth/google" class="btn btn-light w-100 fw-bold d-flex align-items-center justify-content-center" style="font-family: 'Roboto Condensed', sans-serif;">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/40px-Google_%22G%22_logo.svg.png?20230822192911" width="20" class="me-2">
                     Entrar con Google
                 </a>
             </div>
 
-            <div class="text-center text-muted mb-3">- O -</div>
+            <div class="text-center text-muted mb-3" style="font-size: 0.8rem;">- O CON USUARIO -</div>
 
             <div class="mb-3">
-                <input type="text" id="login-user" class="form-control" placeholder="Usuario">
+                <input type="text" id="login-user" class="form-control znk-input" placeholder="Usuario">
             </div>
             <div class="mb-3">
-                <input type="password" id="login-pass" class="form-control" placeholder="Contraseña">
+                <input type="password" id="login-pass" class="form-control znk-input" placeholder="Contraseña">
             </div>
-            <button id="btn-action" onclick="handleAuth()" class="btn btn-danger w-100">Entrar</button>
-            <p id="login-error" class="text-warning mt-3 text-center small" style="display:none;"></p>
+            <button id="btn-action" onclick="handleAuth()" class="btn btn-danger w-100 fw-bold">ENTRAR</button>
+            
+            <p id="login-error" class="text-danger mt-3 text-center small" style="display:none;"></p>
             
             <div class="mt-3 text-center">
-                <small><a href="#" class="text-light" onclick="toggleMode()"><span id="toggle-text">¿No tienes cuenta? Regístrate</span></a></small>
+                <small><a href="#" class="text-secondary text-decoration-none" onclick="toggleMode()"><span id="toggle-text">¿No tienes cuenta? Regístrate</span></a></small>
             </div>
         </div>
     </div>
 
-    <div id="app-screen" class="container mt-5 fade-in" style="display: none;">
-        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-2">
-            <div>
-                <h1 class="text-danger m-0">🦇 Crónica VTM</h1>
-                <small class="text-muted" id="user-display">Cargando...</small>
+    <div id="app-screen" class="fade-in" style="display: none;">
+        
+        <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand text-blood fw-bold d-flex align-items-center" href="#" onclick="switchView('view-sagas')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Vampire-_The_Masquerade_%28Logo%29.svg/960px-Vampire-_The_Masquerade_%28Logo%29.svg.png" width="25" class="me-2">
+                    VTM 5E
+                </a>
+                
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item"><a class="nav-link active" onclick="switchView('view-sagas', this)">Sagas</a></li>
+                        <li class="nav-item"><a class="nav-link" onclick="switchView('view-characters', this)">Cargar PJ</a></li>
+                        <li class="nav-item"><a class="nav-link" onclick="switchView('view-list', this)">Mis Personajes</a></li>
+                        <li class="nav-item"><a class="nav-link" onclick="switchView('view-rules', this)">Reglas</a></li>
+                    </ul>
+                    <span class="navbar-text small text-muted me-3" id="user-display">Usuario</span>
+                    <button onclick="logout()" class="btn btn-outline-secondary btn-sm" style="border:none;">SALIR</button>
+                </div>
             </div>
-            <button onclick="logout()" class="btn btn-outline-light btn-sm">Salir</button>
-        </div>
+        </nav>
 
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card bg-secondary mb-4 shadow">
-                    <div class="card-header text-white fw-bold">Nuevo Vástago</div>
-                    <div class="card-body">
-                        <div class="mb-2"><input type="text" id="name" class="form-control form-control-sm" placeholder="Nombre"></div>
-                        <div class="mb-2"><input type="text" id="clan" class="form-control form-control-sm" placeholder="Clan"></div>
-                        <div class="mb-2"><input type="number" id="gen" class="form-control form-control-sm" placeholder="Generación"></div>
-                        <div class="mb-2">
-    <label class="form-label small">Imagen (Archivo o URL)</label>
-    
-    <input type="file" id="image_file" class="form-control form-control-sm mb-1" accept="image/*">
-    
-    <input type="text" id="image_url" class="form-control form-control-sm" placeholder="O pega una URL aquí...">
-</div>
-                        <div class="mb-3">
-                            <select id="type" class="form-select form-select-sm">
-                                <option value="PC">Jugador (PC)</option>
-                                <option value="NPC">Narrador (NPC)</option>
-                            </select>
+        <div class="container py-5">
+            
+            <div id="view-sagas" class="view-section fade-in">
+                <div class="row g-4 justify-content-center">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="saga-card" onclick="switchView('view-list', document.querySelectorAll('.nav-link')[2])">
+                            <img src="https://i.pinimg.com/736x/21/04/63/210463ecb7ea2687a2202b28c2536b04.jpg" class="saga-img">
+                            <div class="saga-title">Crónicas de Chicago</div>
                         </div>
-                        <button onclick="saveCharacter()" class="btn btn-danger w-100">Abrazar</button>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="saga-card" onclick="switchView('view-list', document.querySelectorAll('.nav-link')[2])">
+                            <img src="https://i.pinimg.com/736x/6f/a9/58/6fa95869408e06a77f3b890a597fa623.jpg" class="saga-img">
+                            <div class="saga-title">La Caída de Londres</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="saga-card">
+                            <img src="https://cdnb.artstation.com/p/assets/images/images/031/653/561/large/ptah-art-asset.jpg" class="saga-img" style="filter: grayscale(1);">
+                            <div class="saga-title text-muted">Nueva Crónica...</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-8">
-                <h4 class="text-info border-bottom border-info pb-1 mb-3">Personajes Jugadores</h4>
-                <div id="pc-list" class="row g-3 mb-5"></div>
+            <div id="view-characters" class="view-section fade-in" style="display: none;">
+                <div class="row justify-content-center">
+                    <div class="col-md-8 col-lg-6">
+                        <h4 class="text-white mb-4 border-bottom border-secondary pb-2">Nuevo Vástago</h4>
+                        <div class="card p-4">
+                            <div class="mb-3">
+                                <label class="text-muted small">Nombre</label>
+                                <input type="text" id="name" class="form-control znk-input">
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="text-muted small">Clan</label>
+                                    <input type="text" id="clan" class="form-control znk-input">
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="text-muted small">Generación</label>
+                                    <input type="number" id="gen" class="form-control znk-input">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Imagen (Archivo o URL)</label>
+                                <input type="file" id="image_file" class="form-control znk-input mb-2" accept="image/*">
+                                <input type="text" id="image_url" class="form-control znk-input" placeholder="O pega una URL directa...">
+                            </div>
+                            <div class="mb-4">
+                                <label class="text-muted small">Tipo de Ficha</label>
+                                <select id="type" class="form-select znk-input">
+                                    <option value="PC">Personaje Jugador (PC)</option>
+                                    <option value="NPC">Narrador (NPC)</option>
+                                </select>
+                            </div>
+                            <button onclick="saveCharacter()" class="btn btn-danger w-100 py-2">ABRAZAR (GUARDAR)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                <h4 class="text-warning border-bottom border-warning pb-1 mb-3">Antagonistas & NPCs</h4>
-                <div id="npc-list" class="row g-3"></div>
+            <div id="view-list" class="view-section fade-in" style="display: none;">
+                <h4 class="text-blood border-bottom border-secondary pb-2 mb-4">Coterie & Aliados</h4>
+                <div id="pc-list" class="row g-4 mb-5"></div>
 
-                <div id="graveyard-section" class="mt-5 pt-4" style="display:none; border-top: 2px dashed #444;">
-                    <h4 class="text-secondary">⚰️ Cementerio (Admin)</h4>
+                <h4 class="text-warning border-bottom border-secondary pb-2 mb-4">Antagonistas & NPCs</h4>
+                <div id="npc-list" class="row g-4"></div>
+                
+                <div id="graveyard-section" class="mt-5 pt-4 border-top border-secondary" style="display:none;">
+                    <h6 class="text-muted mb-3">⚰️ El Cementerio</h6>
                     <div id="graveyard-list" class="row g-3"></div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        let currentUserRole = null;
-        let currentUsername = null;
-        let isRegisterMode = false;
-
-        // Función mágica para convertir archivo a texto (Base64)
-const convertToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-        const fileReader = new FileReader();
-        fileReader.readAsDataURL(file);
-        fileReader.onload = () => {
-            resolve(fileReader.result);
-        };
-        fileReader.onerror = (error) => {
-            reject(error);
-        };
-    });
-};
-        // 1. INICIO: Verificar sesión
-        async function checkSession() {
-            try {
-                const res = await fetch('/api/current_user');
-                const data = await res.json();
-                if (data.success) {
-                    currentUserRole = data.role;
-                    currentUsername = data.username;
-                    showApp();
-                }
-            } catch (e) { console.log("Sin sesión activa"); }
-        }
-
-        // 2. LÓGICA LOGIN/REGISTRO
-        function toggleMode() {
-            isRegisterMode = !isRegisterMode;
-            const title = document.getElementById('login-title');
-            const btn = document.getElementById('btn-action');
-            const txt = document.getElementById('toggle-text');
-            
-            if (isRegisterMode) {
-                title.innerText = "🧛 Nuevo Registro";
-                btn.innerText = "Crear Cuenta";
-                btn.classList.replace('btn-danger', 'btn-info');
-                txt.innerText = "Volver al Login";
-            } else {
-                title.innerText = "🩸 Acceso Restringido";
-                btn.innerText = "Entrar";
-                btn.classList.replace('btn-info', 'btn-danger');
-                txt.innerText = "¿No tienes cuenta? Regístrate";
-            }
-        }
-
-        async function handleAuth() {
-            const u = document.getElementById('login-user').value;
-            const p = document.getElementById('login-pass').value;
-            const endpoint = isRegisterMode ? '/api/register' : '/api/login';
-
-            try {
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: u, password: p })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    if (isRegisterMode) {
-                        alert(data.message);
-                        toggleMode();
-                    } else {
-                        // Login manual exitoso (reload para activar sesión cookie)
-                        location.reload(); 
-                    }
-                } else {
-                    document.getElementById('login-error').innerText = data.message;
-                    document.getElementById('login-error').style.display = 'block';
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        function logout() { window.location.href = '/api/logout'; }
-
-        function showApp() {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-screen').style.display = 'block';
-            document.getElementById('user-display').innerText = `Sesión: ${currentUsername} (${currentUserRole})`;
-            loadCharacters();
-            if(currentUserRole === 'admin') loadGraveyard();
-        }
-
-        // 3. CARGA DE DATOS
-        async function loadCharacters() {
-            const res = await fetch('/api/characters');
-            const data = await res.json();
-            renderList('pc-list', data.pcs, 'info');
-            renderList('npc-list', data.npcs, 'warning');
-        }
-
-        function renderList(elementId, list, color) {
-            document.getElementById(elementId).innerHTML = list.map(char => {
-                const image = char.image_url || 'https://i.pinimg.com/564x/0d/1b/9d/0d1b9d233499119bb9df387033500204.jpg';
+            <div id="view-rules" class="view-section fade-in" style="display: none;">
+                <div class="card p-5">
+                    <h2 class="text-blood">Reglas de la Casa</h2>
+                    <hr class="border-secondary">
+                    <ul>
+                        <li class="mb-2">Los fallos bestiales ocurren con 1 en dados de hambre.</li>
+                        <li class="mb-2">Críticos desastrosos anulan 2 éxitos.</li>
+                        <li class="mb-2">La Humanidad se recupera gastando experiencia x2.</li>
+                    </ul>
+                </div>
+            </div>
+<div id="view-chronicle-detail" class="view-section fade-in" style="display: none;">
                 
-                let deleteBtn = '';
-                if (currentUserRole === 'admin' || char.created_by === currentUsername) {
-                    deleteBtn = `<button onclick="deleteCharacter(${char.id})" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 shadow" style="z-index: 10;">✕</button>`;
-                }
-
-                return `
-                <div class="col-xl-6 col-lg-12">
-                    <div class="card border-blood h-100 position-relative overflow-hidden bg-dark">
-                        ${deleteBtn}
-                        <div class="row g-0 h-100">
-                            <div class="col-4"><img src="${image}" class="img-fluid w-100 h-100" style="object-fit: cover;"></div>
-                            <div class="col-8">
-                                <div class="card-body py-2">
-                                    <h5 class="card-title text-${color} text-truncate mb-1">${char.name}</h5>
-                                    <h6 class="card-subtitle text-muted mb-2 small">${char.clan}</h6>
-                                    <p class="card-text small mb-0">Gen: ${char.generation}</p>
-                                    <small class="text-secondary" style="font-size: 0.7rem;">Por: ${char.created_by || '?'}</small>
-                                </div>
+                <div class="chronicle-header mb-5">
+                    <h1 id="detail-title" class="text-warning ms-3 m-0">Título de la Crónica</h1>
+                    
+                    <div class="d-flex align-items-center me-3">
+                        <div id="detail-roster" class="d-flex">
                             </div>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
-        }
-
-        // 4. ACCIONES
-       async function saveCharacter() {
-    const fileInput = document.getElementById('image_file');
-    const urlInput = document.getElementById('image_url');
-    let finalImage = '';
-
-    // Lógica: ¿Subió archivo?
-    if (fileInput.files.length > 0) {
-        // Convertimos el archivo a texto Base64
-        try {
-            finalImage = await convertToBase64(fileInput.files[0]);
-        } catch (error) {
-            console.error("Error al leer archivo", error);
-            alert("Error al procesar la imagen");
-            return;
-        }
-    } else {
-        // Si no, usamos lo que haya escrito en el campo de texto
-        finalImage = urlInput.value;
-    }
-
-    const char = {
-        name: document.getElementById('name').value,
-        clan: document.getElementById('clan').value,
-        generation: document.getElementById('gen').value,
-        type: document.getElementById('type').value,
-        image_url: finalImage, // Aquí va la imagen (sea URL o Base64)
-        created_by: currentUsername
-    };
-
-    // (Opcional) Validación para no enviar fotos vacías ni datos vacíos
-    if (!char.name) { alert("El nombre es obligatorio"); return; }
-
-    try {
-        await fetch('/api/characters', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(char)
-        });
-        
-        // Limpiar inputs
-        document.getElementById('name').value = '';
-        document.getElementById('clan').value = '';
-        document.getElementById('gen').value = '';
-        document.getElementById('image_url').value = '';
-        document.getElementById('image_file').value = ''; // Limpiar el archivo
-        
-        loadCharacters();
-    } catch (err) {
-        console.error(err);
-        alert("Error al guardar. Quizás la imagen es muy pesada (máx 10MB).");
-    }
-}
-
-        async function deleteCharacter(id) {
-            if (!confirm("¿Decretas la Muerte Final?")) return;
-            await fetch(`/api/characters/${id}`, { method: 'DELETE' });
-            loadCharacters();
-            if(currentUserRole === 'admin') loadGraveyard();
-        }
-
-        // 5. CEMENTERIO
-        async function loadGraveyard() {
-            const res = await fetch('/api/graveyard');
-            const list = await res.json();
-            document.getElementById('graveyard-list').innerHTML = list.map(c => `
-                <div class="col-6 col-md-3">
-                    <div class="card bg-secondary text-white opacity-75 p-2 text-center">
-                        <small>${c.name}</small>
-                        <button onclick="restore(${c.id})" class="btn btn-success btn-sm py-0 mt-1" style="font-size:0.7rem">Revivir</button>
+                        <button id="btn-add-char" onclick="openRosterModal()" class="btn btn-sm btn-outline-warning ms-3 rounded-circle" style="width: 40px; height: 40px;">+</button>
                     </div>
                 </div>
-            `).join('');
-        }
-        async function restore(id) {
-            await fetch(`/api/restore/${id}`, { method: 'PUT' });
-            loadCharacters();
-            loadGraveyard();
-        }
 
-        // INICIAR
-        checkSession();
-    </script>
+                <div id="detail-content" class="container">
+                    </div>
+
+                <div id="admin-story-controls" class="text-center mt-5 mb-5 p-4 border border-secondary" style="border-style: dashed !important; display:none;">
+                    <h4 class="text-muted">Narrador: Agregar Evento</h4>
+                    <input type="text" id="new-section-title" class="form-control znk-input mb-2" placeholder="Título del suceso">
+                    <textarea id="new-section-text" class="form-control znk-input mb-2" rows="4" placeholder="Descripción..."></textarea>
+                    
+                    <div class="input-group mb-3">
+                        <input type="file" id="new-section-file" class="form-control znk-input" accept="image/*">
+                        <input type="text" id="new-section-url" class="form-control znk-input" placeholder="O URL...">
+                    </div>
+                    
+                    <button onclick="addStorySection()" class="btn btn-danger">Escribir en la Historia</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<div id="roster-modal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white border-warning">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning">Invocar Vástago a la Escena</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <select id="roster-select" class="form-select znk-input mb-3"></select>
+                    <button onclick="addToRoster()" class="btn btn-warning w-100">Agregar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

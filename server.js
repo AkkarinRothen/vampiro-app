@@ -200,3 +200,102 @@ app.put('/api/restore/:id', async (req, res) => {
 app.listen(port, () => {
     console.log(`Servidor escuchando en http://localhost:${port}`);
 });
+
+// RUTA TEMPORAL: Crear tablas de Crónicas
+app.get('/setup-chronicles', async (req, res) => {
+    try {
+        // 1. La Tabla de la Crónica en sí (Título y Portada)
+        await pool.query(`CREATE TABLE IF NOT EXISTS chronicles (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            cover_image TEXT
+        )`);
+
+        // 2. Tabla intermedia para saber qué personajes participaron
+        await pool.query(`CREATE TABLE IF NOT EXISTS chronicle_characters (
+            chronicle_id INTEGER,
+            character_id INTEGER,
+            PRIMARY KEY (chronicle_id, character_id)
+        )`);
+
+        // 3. Los "Bloques de Historia" (Texto + Imagen)
+        await pool.query(`CREATE TABLE IF NOT EXISTS chronicle_sections (
+            id SERIAL PRIMARY KEY,
+            chronicle_id INTEGER,
+            title VARCHAR(255),
+            content TEXT,
+            image_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        // Crear una crónica de ejemplo por defecto
+        await pool.query("INSERT INTO chronicles (title, cover_image) VALUES ('La Caída de Londres', 'https://i.pinimg.com/736x/21/04/63/210463ecb7ea2687a2202b28c2536b04.jpg') ON CONFLICT DO NOTHING");
+
+        res.send("¡Tablas de Crónicas forjadas en sangre!");
+    } catch (err) {
+        res.send("Error: " + err.message);
+    }
+});
+
+// --- API DE CRÓNICAS ---
+
+// 1. Obtener todas las crónicas (Para la pantalla de inicio)
+app.get('/api/chronicles', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM chronicles ORDER BY id DESC');
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. Obtener DETALLE de una crónica (Personajes + Secciones)
+app.get('/api/chronicles/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const chronicle = await pool.query('SELECT * FROM chronicles WHERE id = $1', [id]);
+        
+        // Obtener personajes vinculados
+        const chars = await pool.query(`
+            SELECT c.id, c.name, c.image_url, c.clan 
+            FROM characters c 
+            JOIN chronicle_characters cc ON c.id = cc.character_id 
+            WHERE cc.chronicle_id = $1`, [id]);
+            
+        // Obtener secciones de historia
+        const sections = await pool.query('SELECT * FROM chronicle_sections WHERE chronicle_id = $1 ORDER BY id ASC', [id]);
+
+        res.json({
+            info: chronicle.rows[0],
+            characters: chars.rows,
+            sections: sections.rows
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. Agregar una Sección de Historia
+app.post('/api/chronicles/:id/sections', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo el Narrador escribe la historia." });
+    
+    const { id } = req.params;
+    const { title, content, image_url } = req.body;
+    
+    try {
+        await pool.query(
+            'INSERT INTO chronicle_sections (chronicle_id, title, content, image_url) VALUES ($1, $2, $3, $4)',
+            [id, title, content, image_url]
+        );
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 4. Vincular personaje a la crónica
+app.post('/api/chronicles/:id/join', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Denegado." });
+    
+    const { id } = req.params;
+    const { character_id } = req.body;
+    
+    try {
+        await pool.query('INSERT INTO chronicle_characters (chronicle_id, character_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, character_id]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
