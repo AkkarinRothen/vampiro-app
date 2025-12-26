@@ -368,7 +368,33 @@ app.get(/(.*)/, (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
+// ==========================================
+// API: SISTEMA DE RANGO (ESTRELLAS)
+// ==========================================
+
+// 1. Ruta para actualizar el puntaje (Solo Admin)
+app.put('/api/characters/:id/rate', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo el Narrador juzga." });
+    
+    const { stars } = req.body; // Recibimos el número de estrellas (0-5)
+    try {
+        await pool.query('UPDATE characters SET stars = $1 WHERE id = $2', [stars, req.params.id]);
+        res.json({ success: true, stars: stars });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. RUTA TEMPORAL: Crear columna 'stars' en la DB
+app.get('/update-db-stars', async (req, res) => {
+    try {
+        await pool.query('ALTER TABLE characters ADD COLUMN stars INTEGER DEFAULT 0');
+        res.send("✅ ¡Sistema de Rangos (Estrellas) agregado a la base de datos!");
+    } catch (err) {
+        res.send("Aviso (probablemente ya existe): " + err.message);
+    }
+});
+
 // Arrancar Servidor
 app.listen(port, () => {
     console.log(`🦇 Servidor VTM escuchando en http://localhost:${port}`);
 });
+

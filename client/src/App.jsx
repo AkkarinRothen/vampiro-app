@@ -7,6 +7,8 @@ import SagaDetail from './components/SagaDetail';
 import CharacterList from './components/CharacterList';
 import CharacterForm from './components/CharacterForm';
 import LoreView from './components/LoreView';
+import GalleryView from './components/GalleryView';
+
 
 function App() {
     const [user, setUser] = useState(null);
@@ -60,6 +62,9 @@ function App() {
 
                     {/* 5. Lore / Archivos */}
                     <Route path="/lore" element={<LoreView user={user} />} />
+
+                    {/* 6. Galeria */}
+                    <Route path="/gallery" element={<GalleryView user={user} />} /> 
 
                     {/* Ruta por defecto: Redirigir a inicio si no existe */}
                     <Route path="*" element={<Navigate to="/" />} />
