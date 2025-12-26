@@ -1,31 +1,35 @@
-function Navbar({ user, setView, currentView, onLogout }) {
+import { Link } from 'react-router-dom';
+import { FaBookDead, FaUsers, FaScroll, FaSignOutAlt } from 'react-icons/fa'; // Iconos
+
+function Navbar({ user, onLogout }) {
     return (
-        <nav className="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-danger sticky-top">
-            <div className="container-fluid px-4">
-                <a className="navbar-brand text-danger fw-bold" href="#" onClick={() => setView('sagas')}>
-                    VTM 5E
-                </a>
-                
-                <div className="collapse navbar-collapse">
-                    <ul className="navbar-nav me-auto">
-                        <li className="nav-item">
-                            <button className={`nav-link btn btn-link ${currentView === 'sagas' ? 'active text-danger' : ''}`} 
-                                    onClick={() => setView('sagas')}>Sagas</button>
-                        </li>
-                        <li className="nav-item">
-                            <button className={`nav-link btn btn-link ${currentView === 'characters' ? 'active text-danger' : ''}`} 
-                                    onClick={() => setView('characters')}>Personajes</button>
-                        </li>
-                        <li className="nav-item">
-                            <button className={`nav-link btn btn-link ${currentView === 'lore' ? 'active text-danger' : ''}`} 
-                                    onClick={() => setView('lore')}>Archivos</button>
-                        </li>
-                    </ul>
-                    <span className="navbar-text small text-muted me-3">
-                        {user.username} <span className="badge bg-secondary">{user.role}</span>
-                    </span>
-                    <button onClick={onLogout} className="btn btn-outline-secondary btn-sm">SALIR</button>
-                </div>
+        <nav className="bg-black border-b border-red-800 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+            {/* Logo */}
+            <Link to="/" className="text-2xl font-bold text-red-600 hover:text-red-500 no-underline font-serif">
+                VTM 5E
+            </Link>
+            
+            {/* Menú */}
+            <div className="flex gap-6">
+                <Link to="/" className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition-colors no-underline">
+                    <FaBookDead /> Sagas
+                </Link>
+                <Link to="/characters" className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition-colors no-underline">
+                    <FaUsers /> Personajes
+                </Link>
+                <Link to="/lore" className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition-colors no-underline">
+                    <FaScroll /> Archivos
+                </Link>
+            </div>
+
+            {/* Usuario */}
+            <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-500">
+                    {user.username} <span className="bg-neutral-800 px-2 py-0.5 rounded text-xs border border-neutral-600">{user.role}</span>
+                </span>
+                <button onClick={onLogout} className="text-red-600 hover:text-white transition-colors" title="Salir">
+                    <FaSignOutAlt />
+                </button>
             </div>
         </nav>
     );

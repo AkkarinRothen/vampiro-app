@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { FaTrash, FaUserPlus, FaSkull } from 'react-icons/fa';
 
 function CharacterList({ user }) {
     const [pcs, setPcs] = useState([]);
     const [npcs, setNpcs] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const fetchChars = () => {
         fetch('/api/characters')
             .then(res => res.json())
             .then(data => {
-                // Aseguramos que data.pcs y data.npcs existan para evitar errores
                 setPcs(data.pcs || []);
                 setNpcs(data.npcs || []);
+                setLoading(false);
             })
             .catch(err => console.error("Error cargando personajes:", err));
     };
@@ -20,86 +23,134 @@ function CharacterList({ user }) {
     }, []);
 
     const handleDelete = async (id) => {
-        if (!confirm("¿Enviar al cementerio?")) return;
+        if (!confirm("¿Enviar al cementerio? Esta acción es irreversible.")) return;
         await fetch(`/api/characters/${id}`, { method: 'DELETE' });
         fetchChars(); 
     };
 
-    // --- AQUÍ ESTABA EL ERROR: BLINDAJE DE CHARCARD ---
-    const CharCard = ({ char, color }) => {
+    // Sub-componente para la Tarjeta (Estilo Tailwind)
+    const CharCard = ({ char, type }) => {
         let disciplines = [];
-        
         try { 
-            // 1. Intentamos parsear
             const parsed = JSON.parse(char.disciplines);
-            // 2. Verificamos que sea una lista real (Array). Si es null, usamos []
-            if (Array.isArray(parsed)) {
-                disciplines = parsed;
-            }
-        } catch (e) {
-            // Si el JSON estaba roto, no pasa nada, disciplines se queda como []
-            console.warn(`Error leyendo disciplinas de ${char.name}`);
-        }
+            if (Array.isArray(parsed)) disciplines = parsed;
+        } catch (e) { /* Ignorar errores de JSON */ }
+
+        // Colores según tipo (PC = Rojo, NPC = Amarillo)
+        const accentColor = type === 'PC' ? 'text-red-500 border-red-900' : 'text-yellow-500 border-yellow-900';
+        const borderColor = type === 'PC' ? 'hover:border-red-600' : 'hover:border-yellow-600';
 
         return (
-            <div className="col-md-6 col-lg-4">
-                <div className="card bg-dark border border-secondary h-100 position-relative overflow-hidden">
-                    {/* Botón Borrar */}
-                    {(user.role === 'admin' || char.created_by === user.username) && (
-                        <button onClick={() => handleDelete(char.id)} 
-                                className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2" 
-                                style={{zIndex: 10}}>✕</button>
-                    )}
-                    
-                    <div className="row g-0 h-100">
-                        <div className="col-5">
-                            <img src={char.image_url || 'https://via.placeholder.com/150'} 
-                                 className="img-fluid w-100 h-100" style={{objectFit: 'cover'}} />
+            <div className={`relative group bg-neutral-900 border border-neutral-800 ${borderColor} rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-black/50 flex flex-col`}>
+                
+                {/* Botón Borrar (Solo admin o dueño) */}
+                {(user.role === 'admin' || char.created_by === user.username) && (
+                    <button 
+                        onClick={() => handleDelete(char.id)} 
+                        className="absolute top-2 right-2 z-10 p-2 bg-black/50 text-neutral-500 hover:text-red-500 hover:bg-black rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                        title="Eliminar"
+                    >
+                        <FaTrash size={12} />
+                    </button>
+                )}
+                
+                {/* Imagen y Datos Principales */}
+                <div className="flex h-32">
+                    {/* Imagen */}
+                    <div className="w-1/3 relative">
+                        <img 
+                            src={char.image_url || 'https://via.placeholder.com/150'} 
+                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
+                            alt={char.name}
+                        />
+                        <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-neutral-900`}></div>
+                    </div>
+
+                    {/* Info */}
+                    <div className="w-2/3 p-3 flex flex-col justify-center">
+                        <h5 className={`font-serif text-lg font-bold truncate ${accentColor.split(' ')[0]}`}>
+                            {char.name}
+                        </h5>
+                        <div className="text-xs text-neutral-400 font-serif mb-1 uppercase tracking-wider">
+                            {char.clan || 'Caitiff'}
                         </div>
-                        <div className="col-7">
-                            <div className="card-body py-2 px-3">
-                                <h5 className={`card-title ${color} text-truncate mb-1`}>{char.name}</h5>
-                                <h6 className="card-subtitle text-muted mb-1 small">{char.clan || 'Desconocido'}</h6>
-                                
-                                <div className="mb-2">
-                                    {/* Ahora disciplines SIEMPRE es un array, así que esto no fallará */}
-                                    {disciplines.length > 0 ? (
-                                        disciplines.slice(0, 4).map((d, i) => (
-                                            <span key={i} className="badge bg-dark border border-secondary text-secondary me-1" style={{fontSize: '0.6rem'}}>
-                                                {d.substring(0,3).toUpperCase()}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="small text-muted fst-italic">- Sin disciplinas -</span>
-                                    )}
-                                </div>
-                                
-                                <p className="card-text small mb-0 text-muted">Gen: {char.generation || '?'} | {char.predator_type || '-'}</p>
-                            </div>
+                        <div className="text-xs text-neutral-500 flex gap-2">
+                            <span>Gen: {char.generation || '?'}</span>
+                            <span>•</span>
+                            <span className="truncate">{char.predator_type || 'Depredador'}</span>
                         </div>
                     </div>
+                </div>
+
+                {/* Disciplinas (Footer de la carta) */}
+                <div className="bg-black/40 p-2 border-t border-neutral-800 flex flex-wrap gap-1 min-h-[40px] items-center">
+                    {disciplines.length > 0 ? (
+                        disciplines.slice(0, 3).map((d, i) => (
+                            <span key={i} className="px-2 py-0.5 text-[10px] uppercase tracking-wide bg-neutral-800 text-neutral-300 rounded border border-neutral-700">
+                                {d.substring(0,3)}
+                            </span>
+                        ))
+                    ) : (
+                        <span className="text-[10px] text-neutral-600 italic pl-1">Sin disciplinas conocidas</span>
+                    )}
+                    {disciplines.length > 3 && (
+                        <span className="text-[10px] text-neutral-500">+{disciplines.length - 3}</span>
+                    )}
                 </div>
             </div>
         );
     };
 
+    if (loading) return <div className="text-center mt-10 text-red-800 animate-pulse font-serif">Rastreando sangre...</div>;
+
     return (
-        <div className="fade-in">
-            <h4 className="text-danger border-bottom border-secondary pb-2 mb-4">Coterie & Aliados</h4>
-            <div className="row g-4 mb-5">
+        <div className="animate-fade-in pb-10">
+            {/* Cabecera y Botón Nuevo */}
+            <div className="flex justify-between items-end mb-8 border-b border-neutral-800 pb-4">
+                <div>
+                    <h2 className="text-3xl font-serif text-neutral-200">Dramatis Personae</h2>
+                    <p className="text-neutral-500 text-sm">Registro de Vástagos conocidos en la ciudad.</p>
+                </div>
+                
+                <Link to="/create-char" className="flex items-center gap-2 bg-red-900 hover:bg-red-800 text-white px-4 py-2 rounded transition-colors no-underline shadow-lg shadow-red-900/20">
+                    <FaUserPlus /> 
+                    <span className="font-bold text-sm">ABRAZAR</span>
+                </Link>
+            </div>
+
+            {/* SECCIÓN 1: COTERIE (PCs) */}
+            <div className="mb-12">
+                <h3 className="text-xl font-serif text-red-600 mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-red-600 rounded-full inline-block"></span>
+                    Coterie & Aliados
+                </h3>
+                
                 {pcs.length > 0 ? (
-                    pcs.map(char => <CharCard key={char.id} char={char} color="text-danger" />)
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {pcs.map(char => <CharCard key={char.id} char={char} type="PC" />)}
+                    </div>
                 ) : (
-                    <p className="text-muted text-center">No hay personajes jugadores aún.</p>
+                    <div className="p-8 border border-dashed border-neutral-800 rounded text-center text-neutral-600 italic">
+                        No hay personajes jugadores registrados.
+                    </div>
                 )}
             </div>
 
-            <h4 className="text-warning border-bottom border-secondary pb-2 mb-4">Antagonistas & NPCs</h4>
-            <div className="row g-4">
+            {/* SECCIÓN 2: ANTAGONISTAS (NPCs) */}
+            <div>
+                <h3 className="text-xl font-serif text-yellow-600 mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-600 rounded-full inline-block"></span>
+                    Antagonistas & NPCs
+                </h3>
+                
                 {npcs.length > 0 ? (
-                    npcs.map(char => <CharCard key={char.id} char={char} color="text-warning" />)
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {npcs.map(char => <CharCard key={char.id} char={char} type="NPC" />)}
+                    </div>
                 ) : (
-                    <p className="text-muted text-center">No hay NPCs registrados.</p>
+                    <div className="text-neutral-600 text-sm italic pl-4">
+                        Las sombras parecen vacías... por ahora.
+                    </div>
                 )}
             </div>
         </div>
