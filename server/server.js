@@ -454,6 +454,34 @@ app.post('/api/import-data', async (req, res) => {
         res.json({ success: true, message: "¡Datos migrados con éxito!" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+app.get('/setup-users', async (req, res) => {
+    try {
+        // Borramos si existe para empezar de cero (CUIDADO: Borra todos los usuarios)
+        await pool.query('DROP TABLE IF EXISTS users');
+        
+        await pool.query(`
+            CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                role VARCHAR(20) DEFAULT 'player',
+                google_id VARCHAR(255) UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Crear al Narrador (Tú) por defecto
+        // Cambia 'tu_password' por la clave que quieras usar
+        await pool.query(
+            "INSERT INTO users (username, password, role) VALUES ($1, $2, $3)",
+            ['narrador', 'tu_password', 'admin']
+        );
+
+        res.send("✅ Tabla de Usuarios forjada. El Narrador ha sido creado.");
+    } catch (err) {
+        res.status(500).send("Error: " + err.message);
+    }
+});
 
 // Arrancar Servidor
 app.listen(port, async () => {
@@ -467,3 +495,4 @@ app.listen(port, async () => {
         console.error("Error al verificar la columna stars:", err.message);
     }
 });
+
