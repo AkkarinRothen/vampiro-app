@@ -59,7 +59,13 @@
                         <div class="mb-2"><input type="text" id="name" class="form-control form-control-sm" placeholder="Nombre"></div>
                         <div class="mb-2"><input type="text" id="clan" class="form-control form-control-sm" placeholder="Clan"></div>
                         <div class="mb-2"><input type="number" id="gen" class="form-control form-control-sm" placeholder="Generación"></div>
-                        <div class="mb-2"><input type="text" id="image_url" class="form-control form-control-sm" placeholder="URL Imagen"></div>
+                        <div class="mb-2">
+    <label class="form-label small">Imagen (Archivo o URL)</label>
+    
+    <input type="file" id="image_file" class="form-control form-control-sm mb-1" accept="image/*">
+    
+    <input type="text" id="image_url" class="form-control form-control-sm" placeholder="O pega una URL aquí...">
+</div>
                         <div class="mb-3">
                             <select id="type" class="form-select form-select-sm">
                                 <option value="PC">Jugador (PC)</option>
@@ -92,6 +98,19 @@
         let currentUsername = null;
         let isRegisterMode = false;
 
+        // Función mágica para convertir archivo a texto (Base64)
+const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.readAsDataURL(file);
+        fileReader.onload = () => {
+            resolve(fileReader.result);
+        };
+        fileReader.onerror = (error) => {
+            reject(error);
+        };
+    });
+};
         // 1. INICIO: Verificar sesión
         async function checkSession() {
             try {
@@ -201,23 +220,58 @@
         }
 
         // 4. ACCIONES
-        async function saveCharacter() {
-            const char = {
-                name: document.getElementById('name').value,
-                clan: document.getElementById('clan').value,
-                generation: document.getElementById('gen').value,
-                type: document.getElementById('type').value,
-                image_url: document.getElementById('image_url').value
-            };
-            await fetch('/api/characters', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(char)
-            });
-            document.getElementById('name').value = ''; 
-            document.getElementById('image_url').value = '';
-            loadCharacters();
+       async function saveCharacter() {
+    const fileInput = document.getElementById('image_file');
+    const urlInput = document.getElementById('image_url');
+    let finalImage = '';
+
+    // Lógica: ¿Subió archivo?
+    if (fileInput.files.length > 0) {
+        // Convertimos el archivo a texto Base64
+        try {
+            finalImage = await convertToBase64(fileInput.files[0]);
+        } catch (error) {
+            console.error("Error al leer archivo", error);
+            alert("Error al procesar la imagen");
+            return;
         }
+    } else {
+        // Si no, usamos lo que haya escrito en el campo de texto
+        finalImage = urlInput.value;
+    }
+
+    const char = {
+        name: document.getElementById('name').value,
+        clan: document.getElementById('clan').value,
+        generation: document.getElementById('gen').value,
+        type: document.getElementById('type').value,
+        image_url: finalImage, // Aquí va la imagen (sea URL o Base64)
+        created_by: currentUsername
+    };
+
+    // (Opcional) Validación para no enviar fotos vacías ni datos vacíos
+    if (!char.name) { alert("El nombre es obligatorio"); return; }
+
+    try {
+        await fetch('/api/characters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(char)
+        });
+        
+        // Limpiar inputs
+        document.getElementById('name').value = '';
+        document.getElementById('clan').value = '';
+        document.getElementById('gen').value = '';
+        document.getElementById('image_url').value = '';
+        document.getElementById('image_file').value = ''; // Limpiar el archivo
+        
+        loadCharacters();
+    } catch (err) {
+        console.error(err);
+        alert("Error al guardar. Quizás la imagen es muy pesada (máx 10MB).");
+    }
+}
 
         async function deleteCharacter(id) {
             if (!confirm("¿Decretas la Muerte Final?")) return;

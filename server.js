@@ -11,7 +11,9 @@ const port = process.env.PORT || 3000;
 
 // --- 1. CONFIGURACIÓN MIDDLEWARE ---
 app.use(cors());
-app.use(express.json());
+// Aumentamos el límite a 10MB para que entren las fotos
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static('public'));
 
 // Configuración de Sesión (Cookies)
