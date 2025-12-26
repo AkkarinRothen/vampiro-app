@@ -141,16 +141,25 @@ app.get('/api/characters', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Guardar personaje
+
+// Guardar personaje (ACTUALIZADO V5)
 app.post('/api/characters', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "No estás logueado" });
     
-    const { name, clan, generation, type, image_url } = req.body;
-    const created_by = req.user.username; // Usamos el usuario de la sesión real
+    // Recibimos disciplines y predator_type
+    const { name, clan, generation, type, image_url, disciplines, predator_type } = req.body;
+    const created_by = req.user.username;
 
     try {
-        const query = 'INSERT INTO characters (name, clan, generation, type, image_url, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *';
-        const values = [name, clan, generation, type, image_url, created_by];
+        // Convertimos el array de disciplinas a texto JSON para guardarlo
+        const disciplinesString = JSON.stringify(disciplines || []);
+
+        const query = `
+            INSERT INTO characters (name, clan, generation, type, image_url, created_by, disciplines, predator_type) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`;
+        
+        const values = [name, clan, generation, type, image_url, created_by, disciplinesString, predator_type];
+        
         const result = await pool.query(query, values);
         res.json(result.rows[0]);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -298,4 +307,50 @@ app.post('/api/chronicles/:id/join', async (req, res) => {
         await pool.query('INSERT INTO chronicle_characters (chronicle_id, character_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, character_id]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+
+// 5. Borrar una sección de historia
+app.delete('/api/chronicles/sections/:id', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Denegado" });
+    try {
+        await pool.query('DELETE FROM chronicle_sections WHERE id = $1', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 6. Editar una sección existente
+app.put('/api/chronicles/sections/:id', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Denegado" });
+    const { title, content, image_url } = req.body;
+    try {
+        await pool.query(
+            'UPDATE chronicle_sections SET title=$1, content=$2, image_url=$3 WHERE id=$4',
+            [title, content, image_url, req.params.id]
+        );
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 7. Remover personaje de la crónica (Desvincular)
+app.delete('/api/chronicles/:id/roster/:charId', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Denegado" });
+    try {
+        await pool.query(
+            'DELETE FROM chronicle_characters WHERE chronicle_id=$1 AND character_id=$2',
+            [req.params.id, req.params.charId]
+        );
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// RUTA TEMPORAL: Actualizar tabla para V5 Completo
+app.get('/update-db-v5', async (req, res) => {
+    try {
+        await pool.query('ALTER TABLE characters ADD COLUMN disciplines TEXT');
+        await pool.query('ALTER TABLE characters ADD COLUMN predator_type VARCHAR(100)');
+        res.send("¡Sangre espesada! Base de datos actualizada para V5.");
+    } catch (err) {
+        res.send("Error (o ya actualizado): " + err.message);
+    }
 });
