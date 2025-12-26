@@ -8,8 +8,6 @@
     <style>
         .text-blood { color: #ff3333; }
         .border-blood { border-left: 4px solid #8a0e0e !important; }
-        .card-img-left { object-fit: cover; height: 100%; min-height: 120px; }
-        /* Animación suave para aparecer */
         .fade-in { animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -18,26 +16,28 @@
 
     <div id="login-screen" class="container d-flex justify-content-center align-items-center vh-100">
         <div class="card bg-secondary text-white p-4 shadow-lg" style="width: 350px; border-left: 5px solid #800000;">
-            
             <h2 id="login-title" class="text-center text-danger mb-4">🩸 Acceso Restringido</h2>
             
+            <div class="mb-3">
+                <a href="/auth/google" class="btn btn-light w-100 fw-bold d-flex align-items-center justify-content-center">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20" class="me-2">
+                    Entrar con Google
+                </a>
+            </div>
+
+            <div class="text-center text-muted mb-3">- O -</div>
+
             <div class="mb-3">
                 <input type="text" id="login-user" class="form-control" placeholder="Usuario">
             </div>
             <div class="mb-3">
                 <input type="password" id="login-pass" class="form-control" placeholder="Contraseña">
             </div>
-            
-            <button id="btn-action" onclick="handleAuth()" class="btn btn-danger w-100">Entrar al Elíseo</button>
-            
+            <button id="btn-action" onclick="handleAuth()" class="btn btn-danger w-100">Entrar</button>
             <p id="login-error" class="text-warning mt-3 text-center small" style="display:none;"></p>
             
             <div class="mt-3 text-center">
-                <small>
-                    <a href="#" class="text-light text-decoration-none" onclick="toggleMode()">
-                        <span id="toggle-text">¿No tienes cuenta? Regístrate aquí</span>
-                    </a>
-                </small>
+                <small><a href="#" class="text-light" onclick="toggleMode()"><span id="toggle-text">¿No tienes cuenta? Regístrate</span></a></small>
             </div>
         </div>
     </div>
@@ -45,10 +45,10 @@
     <div id="app-screen" class="container mt-5 fade-in" style="display: none;">
         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-2">
             <div>
-                <h1 class="text-danger m-0">🦇 Crónica: La Mascarada</h1>
-                <small class="text-muted" id="user-display">Bienvenido</small>
+                <h1 class="text-danger m-0">🦇 Crónica VTM</h1>
+                <small class="text-muted" id="user-display">Cargando...</small>
             </div>
-            <button onclick="logout()" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+            <button onclick="logout()" class="btn btn-outline-light btn-sm">Salir</button>
         </div>
 
         <div class="row">
@@ -56,30 +56,17 @@
                 <div class="card bg-secondary mb-4 shadow">
                     <div class="card-header text-white fw-bold">Nuevo Vástago</div>
                     <div class="card-body">
-                        <div class="mb-2">
-                            <label class="form-label small">Nombre</label>
-                            <input type="text" id="name" class="form-control form-control-sm">
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small">Clan</label>
-                            <input type="text" id="clan" class="form-control form-control-sm">
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small">Generación</label>
-                            <input type="number" id="gen" class="form-control form-control-sm">
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small">URL de Imagen</label>
-                            <input type="text" id="image_url" class="form-control form-control-sm" placeholder="https://...">
-                        </div>
+                        <div class="mb-2"><input type="text" id="name" class="form-control form-control-sm" placeholder="Nombre"></div>
+                        <div class="mb-2"><input type="text" id="clan" class="form-control form-control-sm" placeholder="Clan"></div>
+                        <div class="mb-2"><input type="number" id="gen" class="form-control form-control-sm" placeholder="Generación"></div>
+                        <div class="mb-2"><input type="text" id="image_url" class="form-control form-control-sm" placeholder="URL Imagen"></div>
                         <div class="mb-3">
-                            <label class="form-label small">Tipo</label>
                             <select id="type" class="form-select form-select-sm">
                                 <option value="PC">Jugador (PC)</option>
                                 <option value="NPC">Narrador (NPC)</option>
                             </select>
                         </div>
-                        <button onclick="saveCharacter()" class="btn btn-danger w-100">Abrazar (Guardar)</button>
+                        <button onclick="saveCharacter()" class="btn btn-danger w-100">Abrazar</button>
                     </div>
                 </div>
             </div>
@@ -92,8 +79,7 @@
                 <div id="npc-list" class="row g-3"></div>
 
                 <div id="graveyard-section" class="mt-5 pt-4" style="display:none; border-top: 2px dashed #444;">
-                    <h4 class="text-secondary">⚰️ El Cementerio (Papelera)</h4>
-                    <p class="text-muted small">Solo el Narrador puede ver y revivir estos personajes.</p>
+                    <h4 class="text-secondary">⚰️ Cementerio (Admin)</h4>
                     <div id="graveyard-list" class="row g-3"></div>
                 </div>
             </div>
@@ -101,50 +87,47 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script>
-        // --- VARIABLES GLOBALES ---
         let currentUserRole = null;
         let currentUsername = null;
-
-       // --- SISTEMA DE LOGIN Y REGISTRO ---
         let isRegisterMode = false;
 
+        // 1. INICIO: Verificar sesión
+        async function checkSession() {
+            try {
+                const res = await fetch('/api/current_user');
+                const data = await res.json();
+                if (data.success) {
+                    currentUserRole = data.role;
+                    currentUsername = data.username;
+                    showApp();
+                }
+            } catch (e) { console.log("Sin sesión activa"); }
+        }
+
+        // 2. LÓGICA LOGIN/REGISTRO
         function toggleMode() {
             isRegisterMode = !isRegisterMode;
             const title = document.getElementById('login-title');
             const btn = document.getElementById('btn-action');
-            const toggleText = document.getElementById('toggle-text');
-            const errorMsg = document.getElementById('login-error');
-
-            // Limpiamos errores al cambiar
-            errorMsg.style.display = 'none';
-
+            const txt = document.getElementById('toggle-text');
+            
             if (isRegisterMode) {
-                title.innerText = "🧛 Nuevo Vástago";
+                title.innerText = "🧛 Nuevo Registro";
                 btn.innerText = "Crear Cuenta";
-                toggleText.innerText = "Volver al Login";
-                btn.classList.replace('btn-danger', 'btn-info'); // Cambia color a azul para diferenciar
+                btn.classList.replace('btn-danger', 'btn-info');
+                txt.innerText = "Volver al Login";
             } else {
                 title.innerText = "🩸 Acceso Restringido";
-                btn.innerText = "Entrar al Elíseo";
-                toggleText.innerText = "¿No tienes cuenta? Regístrate aquí";
-                btn.classList.replace('btn-info', 'btn-danger'); // Vuelve a rojo
+                btn.innerText = "Entrar";
+                btn.classList.replace('btn-info', 'btn-danger');
+                txt.innerText = "¿No tienes cuenta? Regístrate";
             }
         }
 
         async function handleAuth() {
             const u = document.getElementById('login-user').value;
             const p = document.getElementById('login-pass').value;
-            const errorMsg = document.getElementById('login-error');
-            
-            if(!u || !p) {
-                errorMsg.innerText = "Completa todos los campos.";
-                errorMsg.style.display = 'block';
-                return;
-            }
-
-            // Decidimos a qué ruta llamar según el modo
             const endpoint = isRegisterMode ? '/api/register' : '/api/login';
 
             try {
@@ -157,175 +140,113 @@
 
                 if (data.success) {
                     if (isRegisterMode) {
-                        // SI FUE REGISTRO: Avisamos y volvemos al login
                         alert(data.message);
-                        toggleMode(); // Volver a modo login para que entre
+                        toggleMode();
                     } else {
-                        // SI FUE LOGIN: Entramos a la app
-                        currentUserRole = data.role;
-                        currentUsername = data.username;
-
-                        document.getElementById('login-screen').style.display = 'none';
-                        document.getElementById('app-screen').style.display = 'block';
-                        document.getElementById('user-display').innerText = `Sesión: ${currentUsername} (${currentUserRole})`;
-
-                        loadCharacters();
-                        if (currentUserRole === 'admin') loadGraveyard();
+                        // Login manual exitoso (reload para activar sesión cookie)
+                        location.reload(); 
                     }
                 } else {
-                    errorMsg.innerText = data.message;
-                    errorMsg.style.display = 'block';
+                    document.getElementById('login-error').innerText = data.message;
+                    document.getElementById('login-error').style.display = 'block';
                 }
-            } catch (err) {
-                console.error(err);
-                errorMsg.innerText = "Error de conexión.";
-                errorMsg.style.display = 'block';
-            }
+            } catch (err) { console.error(err); }
         }
 
-        function logout() {
-            location.reload(); // Recargar limpia la memoria y vuelve al login
+        function logout() { window.location.href = '/api/logout'; }
+
+        function showApp() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'block';
+            document.getElementById('user-display').innerText = `Sesión: ${currentUsername} (${currentUserRole})`;
+            loadCharacters();
+            if(currentUserRole === 'admin') loadGraveyard();
         }
 
-        // --- CARGAR PERSONAJES ACTIVOS ---
+        // 3. CARGA DE DATOS
         async function loadCharacters() {
-            try {
-                const res = await fetch('/api/characters');
-                const data = await res.json();
-
-                if (data.error) {
-                    console.error("Error backend:", data.error);
-                    return;
-                }
-
-                renderList('pc-list', data.pcs, 'info');
-                renderList('npc-list', data.npcs, 'warning');
-            } catch (error) {
-                console.error("Error cargando:", error);
-            }
+            const res = await fetch('/api/characters');
+            const data = await res.json();
+            renderList('pc-list', data.pcs, 'info');
+            renderList('npc-list', data.npcs, 'warning');
         }
 
         function renderList(elementId, list, color) {
-            const container = document.getElementById(elementId);
-            container.innerHTML = list.map(char => {
-                // Imagen por defecto si no tiene
+            document.getElementById(elementId).innerHTML = list.map(char => {
                 const image = char.image_url || 'https://i.pinimg.com/564x/0d/1b/9d/0d1b9d233499119bb9df387033500204.jpg';
                 
-                // Lógica del botón borrar:
-                // Se muestra si soy Admin O si yo creé el personaje
-                let deleteButton = '';
+                let deleteBtn = '';
                 if (currentUserRole === 'admin' || char.created_by === currentUsername) {
-                    deleteButton = `
-                    <button onclick="deleteCharacter(${char.id})" 
-                            class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 shadow" 
-                            style="z-index: 10;" title="Enviar al Cementerio">✕</button>
-                    `;
+                    deleteBtn = `<button onclick="deleteCharacter(${char.id})" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 shadow" style="z-index: 10;">✕</button>`;
                 }
 
                 return `
                 <div class="col-xl-6 col-lg-12">
                     <div class="card border-blood h-100 position-relative overflow-hidden bg-dark">
-                        ${deleteButton}
+                        ${deleteBtn}
                         <div class="row g-0 h-100">
-                            <div class="col-4">
-                                <img src="${image}" class="img-fluid w-100 h-100" style="object-fit: cover;">
-                            </div>
+                            <div class="col-4"><img src="${image}" class="img-fluid w-100 h-100" style="object-fit: cover;"></div>
                             <div class="col-8">
                                 <div class="card-body py-2">
                                     <h5 class="card-title text-${color} text-truncate mb-1">${char.name}</h5>
                                     <h6 class="card-subtitle text-muted mb-2 small">${char.clan}</h6>
                                     <p class="card-text small mb-0">Gen: ${char.generation}</p>
-                                    <small class="text-secondary" style="font-size: 0.7rem;">Creado por: ${char.created_by || '?'}</small>
+                                    <small class="text-secondary" style="font-size: 0.7rem;">Por: ${char.created_by || '?'}</small>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                `;
+                </div>`;
             }).join('');
         }
 
-        // --- CARGAR CEMENTERIO (SOLO ADMIN) ---
-        async function loadGraveyard() {
-            if (currentUserRole !== 'admin') return;
-            
-            document.getElementById('graveyard-section').style.display = 'block';
-            
-            const res = await fetch('/api/graveyard');
-            const list = await res.json();
-            
-            const container = document.getElementById('graveyard-list');
-            
-            if(list.length === 0) {
-                container.innerHTML = '<p class="text-muted small fst-italic">No hay nadie aquí... por ahora.</p>';
-                return;
-            }
-
-            container.innerHTML = list.map(char => `
-                <div class="col-md-3 col-6">
-                    <div class="card bg-secondary text-white h-100 opacity-75 border-secondary">
-                        <div class="card-body p-2 text-center">
-                            <h6 class="card-title text-truncate">${char.name}</h6>
-                            <button onclick="restoreCharacter(${char.id})" class="btn btn-success btn-sm w-100 py-0" style="font-size: 0.8rem;">Revivir</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // --- ACCIONES (GUARDAR, BORRAR, REVIVIR) ---
-
+        // 4. ACCIONES
         async function saveCharacter() {
             const char = {
                 name: document.getElementById('name').value,
                 clan: document.getElementById('clan').value,
                 generation: document.getElementById('gen').value,
                 type: document.getElementById('type').value,
-                image_url: document.getElementById('image_url').value,
-                created_by: currentUsername // ¡Importante! Firmamos la creación
+                image_url: document.getElementById('image_url').value
             };
-
             await fetch('/api/characters', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(char)
             });
-            
-            // Limpiar inputs
-            document.getElementById('name').value = '';
+            document.getElementById('name').value = ''; 
             document.getElementById('image_url').value = '';
-            
             loadCharacters();
         }
 
         async function deleteCharacter(id) {
-            if (!confirm("¿Decretas la Muerte Final (Backup)?")) return;
-
-            try {
-                const res = await fetch(`/api/characters/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: currentUsername, role: currentUserRole })
-                });
-                
-                const data = await res.json();
-                if(data.error) {
-                    alert(data.error); // Mensaje si intenta borrar algo que no es suyo
-                } else {
-                    loadCharacters();
-                    if(currentUserRole === 'admin') loadGraveyard();
-                }
-            } catch (err) {
-                console.error(err);
-            }
+            if (!confirm("¿Decretas la Muerte Final?")) return;
+            await fetch(`/api/characters/${id}`, { method: 'DELETE' });
+            loadCharacters();
+            if(currentUserRole === 'admin') loadGraveyard();
         }
 
-        async function restoreCharacter(id) {
+        // 5. CEMENTERIO
+        async function loadGraveyard() {
+            const res = await fetch('/api/graveyard');
+            const list = await res.json();
+            document.getElementById('graveyard-list').innerHTML = list.map(c => `
+                <div class="col-6 col-md-3">
+                    <div class="card bg-secondary text-white opacity-75 p-2 text-center">
+                        <small>${c.name}</small>
+                        <button onclick="restore(${c.id})" class="btn btn-success btn-sm py-0 mt-1" style="font-size:0.7rem">Revivir</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        async function restore(id) {
             await fetch(`/api/restore/${id}`, { method: 'PUT' });
             loadCharacters();
             loadGraveyard();
         }
 
+        // INICIAR
+        checkSession();
     </script>
 </body>
 </html>
