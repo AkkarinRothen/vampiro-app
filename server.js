@@ -187,3 +187,33 @@ app.get('/add-soft-delete', async (req, res) => {
 app.listen(port, () => {
     console.log(`Servidor escuchando en http://localhost:${port}`);
 });
+
+// 9. RUTA DE REGISTRO
+app.post('/api/register', async (req, res) => {
+    const { username, password } = req.body;
+    
+    // Validación básica
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: "Falta usuario o contraseña" });
+    }
+
+    try {
+        // Por defecto, todos los que se registran por la web son 'player'
+        const role = 'player'; 
+        
+        await pool.query(
+            'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)',
+            [username, password, role]
+        );
+        
+        res.json({ success: true, message: "¡Vástago reconocido! Ahora puedes iniciar sesión." });
+    } catch (err) {
+        // El código '23505' en Postgres significa "Ya existe ese dato único"
+        if (err.code === '23505') {
+            res.status(400).json({ success: false, message: "Ese nombre ya está ocupado por otro vástago." });
+        } else {
+            console.error(err);
+            res.status(500).json({ success: false, message: "Error del servidor: " + err.message });
+        }
+    }
+});

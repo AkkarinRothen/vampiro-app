@@ -18,18 +18,26 @@
 
     <div id="login-screen" class="container d-flex justify-content-center align-items-center vh-100">
         <div class="card bg-secondary text-white p-4 shadow-lg" style="width: 350px; border-left: 5px solid #800000;">
-            <h2 class="text-center text-danger mb-4">🩸 Acceso Restringido</h2>
+            
+            <h2 id="login-title" class="text-center text-danger mb-4">🩸 Acceso Restringido</h2>
+            
             <div class="mb-3">
-                <input type="text" id="login-user" class="form-control" placeholder="Usuario (ej. narrador)">
+                <input type="text" id="login-user" class="form-control" placeholder="Usuario">
             </div>
             <div class="mb-3">
                 <input type="password" id="login-pass" class="form-control" placeholder="Contraseña">
             </div>
-            <button onclick="login()" class="btn btn-danger w-100">Entrar al Elíseo</button>
+            
+            <button id="btn-action" onclick="handleAuth()" class="btn btn-danger w-100">Entrar al Elíseo</button>
+            
             <p id="login-error" class="text-warning mt-3 text-center small" style="display:none;"></p>
-            <div class="mt-3 text-muted small text-center">
-                <hr>
-                <p>Prueba: narrador / 1234<br>jugador / 1234</p>
+            
+            <div class="mt-3 text-center">
+                <small>
+                    <a href="#" class="text-light text-decoration-none" onclick="toggleMode()">
+                        <span id="toggle-text">¿No tienes cuenta? Regístrate aquí</span>
+                    </a>
+                </small>
             </div>
         </div>
     </div>
@@ -99,14 +107,48 @@
         let currentUserRole = null;
         let currentUsername = null;
 
-        // --- SISTEMA DE LOGIN ---
-        async function login() {
+       // --- SISTEMA DE LOGIN Y REGISTRO ---
+        let isRegisterMode = false;
+
+        function toggleMode() {
+            isRegisterMode = !isRegisterMode;
+            const title = document.getElementById('login-title');
+            const btn = document.getElementById('btn-action');
+            const toggleText = document.getElementById('toggle-text');
+            const errorMsg = document.getElementById('login-error');
+
+            // Limpiamos errores al cambiar
+            errorMsg.style.display = 'none';
+
+            if (isRegisterMode) {
+                title.innerText = "🧛 Nuevo Vástago";
+                btn.innerText = "Crear Cuenta";
+                toggleText.innerText = "Volver al Login";
+                btn.classList.replace('btn-danger', 'btn-info'); // Cambia color a azul para diferenciar
+            } else {
+                title.innerText = "🩸 Acceso Restringido";
+                btn.innerText = "Entrar al Elíseo";
+                toggleText.innerText = "¿No tienes cuenta? Regístrate aquí";
+                btn.classList.replace('btn-info', 'btn-danger'); // Vuelve a rojo
+            }
+        }
+
+        async function handleAuth() {
             const u = document.getElementById('login-user').value;
             const p = document.getElementById('login-pass').value;
             const errorMsg = document.getElementById('login-error');
+            
+            if(!u || !p) {
+                errorMsg.innerText = "Completa todos los campos.";
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            // Decidimos a qué ruta llamar según el modo
+            const endpoint = isRegisterMode ? '/api/register' : '/api/login';
 
             try {
-                const res = await fetch('/api/login', {
+                const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: u, password: p })
@@ -114,25 +156,29 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    // Guardamos credenciales en memoria
-                    currentUserRole = data.role;
-                    currentUsername = data.username;
+                    if (isRegisterMode) {
+                        // SI FUE REGISTRO: Avisamos y volvemos al login
+                        alert(data.message);
+                        toggleMode(); // Volver a modo login para que entre
+                    } else {
+                        // SI FUE LOGIN: Entramos a la app
+                        currentUserRole = data.role;
+                        currentUsername = data.username;
 
-                    // Cambiamos de pantalla
-                    document.getElementById('login-screen').style.display = 'none';
-                    document.getElementById('app-screen').style.display = 'block';
-                    document.getElementById('user-display').innerText = `Sesión iniciada como: ${currentUsername} (${currentUserRole})`;
+                        document.getElementById('login-screen').style.display = 'none';
+                        document.getElementById('app-screen').style.display = 'block';
+                        document.getElementById('user-display').innerText = `Sesión: ${currentUsername} (${currentUserRole})`;
 
-                    // Cargamos los datos
-                    loadCharacters();
-                    if (currentUserRole === 'admin') loadGraveyard();
+                        loadCharacters();
+                        if (currentUserRole === 'admin') loadGraveyard();
+                    }
                 } else {
                     errorMsg.innerText = data.message;
                     errorMsg.style.display = 'block';
                 }
             } catch (err) {
                 console.error(err);
-                errorMsg.innerText = "Error de conexión con el servidor.";
+                errorMsg.innerText = "Error de conexión.";
                 errorMsg.style.display = 'block';
             }
         }
