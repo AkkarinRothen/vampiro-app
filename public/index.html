@@ -86,11 +86,17 @@
             }
         }
 
-        function renderList(elementId, list, color) {
+       function renderList(elementId, list, color) {
             const container = document.getElementById(elementId);
             container.innerHTML = list.map(char => `
                 <div class="col-md-6">
-                    <div class="card border-blood h-100">
+                    <div class="card border-blood h-100 position-relative">
+                        <button onclick="deleteCharacter(${char.id})" 
+                                class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2"
+                                title="Muerte Final">
+                            ✕
+                        </button>
+                        
                         <div class="card-body">
                             <h5 class="card-title text-${color}">${char.name}</h5>
                             <h6 class="card-subtitle mb-2 text-muted">${char.clan}</h6>
@@ -100,7 +106,20 @@
                 </div>
             `).join('');
         }
+async function deleteCharacter(id) {
+            // Preguntar antes de borrar (Importante para no equivocarse)
+            if (!confirm("¿Decretas la Muerte Final para este vástago? Esta acción no se puede deshacer.")) {
+                return;
+            }
 
+            try {
+                await fetch(`/api/characters/${id}`, { method: 'DELETE' });
+                loadCharacters(); // Recarga la lista para ver que desapareció
+            } catch (error) {
+                console.error("Error al borrar:", error);
+                alert("No se pudo eliminar al personaje.");
+            }
+        }
         async function saveCharacter() {
             const char = {
                 name: document.getElementById('name').value,

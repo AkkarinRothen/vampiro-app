@@ -64,7 +64,17 @@ app.get('/setup', async (req, res) => {
         res.send("Error creando la tabla: " + err.message);
     }
 });
-
+// 4. RUTA DE MUERTE FINAL: Borrar personaje
+app.delete('/api/characters/:id', async (req, res) => {
+    const { id } = req.params; // Captura el ID de la URL
+    try {
+        await pool.query('DELETE FROM characters WHERE id = $1', [id]);
+        res.json({ message: "Personaje enviado al olvido" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
 app.listen(port, () => {
     console.log(`Servidor escuchando en http://localhost:${port}`);
 });
