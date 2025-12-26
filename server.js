@@ -31,12 +31,14 @@ app.get('/api/characters', async (req, res) => {
     }
 });
 
-// 2. Guardar personaje
+// 2. Guardar personaje (ACTUALIZADO CON IMAGEN)
 app.post('/api/characters', async (req, res) => {
-    const { name, clan, generation, type } = req.body;
+    // Agregamos image_url aquí vvv
+    const { name, clan, generation, type, image_url } = req.body;
     try {
-        const query = 'INSERT INTO characters (name, clan, generation, type) VALUES ($1, $2, $3, $4) RETURNING *';
-        const values = [name, clan, generation, type];
+        const query = 'INSERT INTO characters (name, clan, generation, type, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *';
+        // Agregamos image_url al array de valores vvv
+        const values = [name, clan, generation, type, image_url];
         const result = await pool.query(query, values);
         res.json(result.rows[0]);
     } catch (err) {
@@ -73,6 +75,16 @@ app.delete('/api/characters/:id', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
+    }
+});
+// 5. RUTA DE EVOLUCIÓN: Agregar columna de imagen
+app.get('/add-image-column', async (req, res) => {
+    try {
+        await pool.query('ALTER TABLE characters ADD COLUMN image_url TEXT');
+        res.send("¡Evolución completa! Ahora la base de datos acepta imágenes.");
+    } catch (err) {
+        console.error(err);
+        res.send("Error (o la columna ya existía): " + err.message);
     }
 });
 app.listen(port, () => {

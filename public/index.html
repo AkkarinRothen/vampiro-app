@@ -39,6 +39,10 @@
                                 <option value="PC">Jugador (PC)</option>
                                 <option value="NPC">Narrador (NPC)</option>
                             </select>
+                            <div class="mb-3">
+    <label class="form-label">URL de Imagen</label>
+    <input type="text" id="image_url" class="form-control" placeholder="https://...">
+</div>
                         </div>
                         <button onclick="saveCharacter()" class="btn btn-danger w-100">Abrazar</button>
                     </div>
@@ -86,26 +90,37 @@
             }
         }
 
-       function renderList(elementId, list, color) {
-            const container = document.getElementById(elementId);
-            container.innerHTML = list.map(char => `
-                <div class="col-md-6">
-                    <div class="card border-blood h-100 position-relative">
-                        <button onclick="deleteCharacter(${char.id})" 
-                                class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2"
-                                title="Muerte Final">
-                            ✕
-                        </button>
-                        
+      function renderList(elementId, list, color) {
+    const container = document.getElementById(elementId);
+    container.innerHTML = list.map(char => {
+        // Si no tiene imagen, usamos una silueta genérica oscura
+        const image = char.image_url || 'https://i.pinimg.com/564x/0d/1b/9d/0d1b9d233499119bb9df387033500204.jpg';
+        
+        return `
+        <div class="col-md-6">
+            <div class="card border-blood h-100 position-relative overflow-hidden">
+                <button onclick="deleteCharacter(${char.id})" 
+                        class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2" 
+                        style="z-index: 10;">✕</button>
+                
+                <div class="row g-0">
+                    <div class="col-4">
+                        <img src="${image}" class="img-fluid h-100 w-100" style="object-fit: cover; min-height: 100px;">
+                    </div>
+                    
+                    <div class="col-8">
                         <div class="card-body">
-                            <h5 class="card-title text-${color}">${char.name}</h5>
+                            <h5 class="card-title text-${color} text-truncate">${char.name}</h5>
                             <h6 class="card-subtitle mb-2 text-muted">${char.clan}</h6>
-                            <p class="card-text small">Gen: ${char.generation}</p>
+                            <p class="card-text small mb-0">Gen: ${char.generation}</p>
                         </div>
                     </div>
                 </div>
-            `).join('');
-        }
+            </div>
+        </div>
+        `;
+    }).join('');
+}
 async function deleteCharacter(id) {
             // Preguntar antes de borrar (Importante para no equivocarse)
             if (!confirm("¿Decretas la Muerte Final para este vástago? Esta acción no se puede deshacer.")) {
@@ -120,14 +135,16 @@ async function deleteCharacter(id) {
                 alert("No se pudo eliminar al personaje.");
             }
         }
-        async function saveCharacter() {
-            const char = {
-                name: document.getElementById('name').value,
-                clan: document.getElementById('clan').value,
-                generation: document.getElementById('gen').value,
-                type: document.getElementById('type').value,
-                notes: ''
-            };
+       async function saveCharacter() {
+    const char = {
+        name: document.getElementById('name').value,
+        clan: document.getElementById('clan').value,
+        generation: document.getElementById('gen').value,
+        type: document.getElementById('type').value,
+        image_url: document.getElementById('image_url').value, // <--- NUEVO
+        notes: ''
+    };
+    
             await fetch('/api/characters', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
