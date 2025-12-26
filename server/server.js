@@ -252,34 +252,42 @@ app.get('/api/characters', async (req, res) => {
         res.status(500).json({ error: "Error al obtener personajes" });
     }
 });
+const cloudinary = require('cloudinary').v2;
 
+// Configuración (Añade tus credenciales en el .env)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// RUTA ACTUALIZADA DE CREACIÓN
 app.post('/api/characters', async (req, res) => {
-    if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "No estás logueado" });
-    }
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "No estás logueado" });
     
-    const { name, clan, generation, type, image_url, disciplines, predator_type } = req.body;
-    
-    // Validación
-    if (!name || !clan || !type) {
-        return res.status(400).json({ error: "Faltan datos obligatorios" });
-    }
-    
+    let { name, clan, generation, type, image_url, disciplines, predator_type } = req.body;
     const created_by = req.user.username;
 
     try {
+        // --- TRUCO CLOUDINARY ---
+        // Si la imagen es un archivo subido (Base64), lo mandamos a la nube
+        if (image_url && image_url.startsWith('data:image')) {
+            const uploadRes = await cloudinary.uploader.upload(image_url, {
+                folder: 'vtm_portal_personajes',
+            });
+            image_url = uploadRes.secure_url; // Ahora guardamos una URL eterna de internet
+        }
+
         const disciplinesString = JSON.stringify(disciplines || []);
         const query = `
             INSERT INTO characters (name, clan, generation, type, image_url, created_by, disciplines, predator_type, stars) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0) 
-            RETURNING *`;
-        const values = [name, clan, generation, type, image_url, created_by, disciplinesString, predator_type];
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0) RETURNING *`;
         
-        const result = await pool.query(query, values);
+        const result = await pool.query(query, [name, clan, generation, type, image_url, created_by, disciplinesString, predator_type]);
         res.json(result.rows[0]);
     } catch (err) {
-        console.error('Error creando personaje:', err);
-        res.status(500).json({ error: "Error al crear personaje" });
+        console.error('Error al crear personaje:', err);
+        res.status(500).json({ error: "No se pudo invocar al vástago" });
     }
 });
 
