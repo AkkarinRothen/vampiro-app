@@ -77,55 +77,54 @@ passport.deserializeUser(async (id, done) => {
 // ==========================================
 // 4. RUTAS DE AUTENTICACIÓN
 // ==========================================
+const bcrypt = require('bcrypt'); // Asegúrate de agregar esto arriba
 
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    try {
-        const result = await pool.query('SELECT * FROM users WHERE username = $1 AND password = $2', [username, password]);
-        if (result.rows.length > 0) {
-            const user = result.rows[0];
-            req.login(user, (err) => {
-                if (err) return res.status(500).json({ message: "Error de sesión" });
-                res.json({ success: true, role: user.role, username: user.username });
-            });
-        } else {
-            res.status(401).json({ success: false, message: "Credenciales incorrectas" });
-        }
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
+// --- REGISTRO CON SEGURIDAD (BCRYPT) ---
 app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ message: "Faltan datos" });
 
     try {
-        await pool.query("INSERT INTO users (username, password, role) VALUES ($1, $2, 'player')", [username, password]);
-        res.json({ success: true, message: "Usuario creado. Ahora inicia sesión." });
+        // Encriptar la contraseña (el número 10 es el costo de procesamiento)
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        await pool.query(
+            "INSERT INTO users (username, password, role) VALUES ($1, $2, 'player')", 
+            [username, hashedPassword]
+        );
+        
+        res.json({ success: true, message: "Usuario creado con éxito." });
     } catch (err) {
         if (err.code === '23505') res.status(400).json({ message: "El usuario ya existe" });
         else res.status(500).json({ message: "Error: " + err.message });
     }
 });
 
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile'] }));
-app.get('/auth/google/callback', 
-    passport.authenticate('google', { failureRedirect: '/' }),
-    (req, res) => res.redirect('/')
-);
-
-app.get('/api/current_user', (req, res) => {
-    if (req.isAuthenticated()) {
-        res.json({ success: true, username: req.user.username, role: req.user.role });
-    } else {
-        res.json({ success: false });
-    }
-});
-
-app.get('/api/logout', (req, res, next) => {
-    req.logout((err) => {
-        if (err) return next(err);
-        res.redirect('/');
-    });
+// --- LOGIN CON SEGURIDAD (BCRYPT) ---
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        // 1. Buscar al usuario por nombre
+        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        
+        if (result.rows.length > 0) {
+            const user = result.rows[0];
+            
+            // 2. Comparar la contraseña ingresada con el hash de la DB
+            const match = await bcrypt.compare(password, user.password);
+            
+            if (match) {
+                req.login(user, (err) => {
+                    if (err) return res.status(500).json({ message: "Error de sesión" });
+                    res.json({ success: true, role: user.role, username: user.username });
+                });
+            } else {
+                res.status(401).json({ success: false, message: "Contraseña incorrecta" });
+            }
+        } else {
+            res.status(401).json({ success: false, message: "El usuario no existe" });
+        }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ==========================================
@@ -456,9 +455,7 @@ app.post('/api/import-data', async (req, res) => {
 });
 app.get('/setup-users', async (req, res) => {
     try {
-        // Borramos si existe para empezar de cero (CUIDADO: Borra todos los usuarios)
         await pool.query('DROP TABLE IF EXISTS users');
-        
         await pool.query(`
             CREATE TABLE users (
                 id SERIAL PRIMARY KEY,
@@ -470,17 +467,15 @@ app.get('/setup-users', async (req, res) => {
             )
         `);
 
-        // Crear al Narrador (Tú) por defecto
-        // Cambia 'tu_password' por la clave que quieras usar
+        // Encriptar la contraseña del admin inicial
+        const adminPass = await bcrypt.hash('tu_password_secreto', 10);
         await pool.query(
-            "INSERT INTO users (username, password, role) VALUES ($1, $2, $3)",
-            ['narrador', 'tu_password', 'admin']
+            "INSERT INTO users (username, password, role) VALUES ($1, $2, 'admin')",
+            ['narrador', adminPass]
         );
 
-        res.send("✅ Tabla de Usuarios forjada. El Narrador ha sido creado.");
-    } catch (err) {
-        res.status(500).send("Error: " + err.message);
-    }
+        res.send("✅ Tabla de Usuarios forjada con BCRYPT.");
+    } catch (err) { res.status(500).send("Error: " + err.message); }
 });
 
 // Arrancar Servidor
