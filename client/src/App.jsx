@@ -65,7 +65,9 @@ function App() {
 
                     {/* 6. Galeria */}
                     <Route path="/gallery" element={<GalleryView user={user} />} /> 
-
+                    
+                    {/* 7. Panel de Mantenimiento (Solo Admin) */}
+                    <Route path="/admin" element={<MaintenancePanel user={user} />} />
                     {/* Ruta por defecto: Redirigir a inicio si no existe */}
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>

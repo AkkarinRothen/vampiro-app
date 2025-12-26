@@ -134,11 +134,17 @@ app.get('/api/logout', (req, res, next) => {
 
 app.get('/api/characters', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM characters WHERE is_deleted = false ORDER BY id DESC');
-        const pcs = result.rows.filter(c => c.type === 'PC');
-        const npcs = result.rows.filter(c => c.type === 'NPC');
-        res.json({ pcs, npcs });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        // Asegúrate de que "stars" esté en el SELECT
+        const pcs = await pool.query('SELECT id, name, clan, stars, image_url, generation, disciplines, predator_type FROM characters WHERE is_npc = false ORDER BY stars DESC, name ASC');
+        const npcs = await pool.query('SELECT * FROM characters WHERE is_npc = true ORDER BY name ASC');
+        
+        res.json({
+            pcs: pcs.rows,
+            npcs: npcs.rows
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/characters', async (req, res) => {
@@ -374,13 +380,24 @@ app.get(/(.*)/, (req, res) => {
 
 // 1. Ruta para actualizar el puntaje (Solo Admin)
 app.put('/api/characters/:id/rate', async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo el Narrador juzga." });
-    
-    const { stars } = req.body; // Recibimos el número de estrellas (0-5)
+    const { id } = req.params;
+    const { stars } = req.body;
+
     try {
-        await pool.query('UPDATE characters SET stars = $1 WHERE id = $2', [stars, req.params.id]);
-        res.json({ success: true, stars: stars });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const result = await pool.query(
+            'UPDATE characters SET stars = $1 WHERE id = $2 RETURNING *',
+            [stars, id]
+        );
+        
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Personaje no encontrado" });
+        }
+
+        res.json({ success: true, character: result.rows[0] });
+    } catch (err) {
+        console.error("Error al guardar estrellas:", err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // 2. RUTA TEMPORAL: Crear columna 'stars' en la DB
@@ -394,7 +411,14 @@ app.get('/update-db-stars', async (req, res) => {
 });
 
 // Arrancar Servidor
-app.listen(port, () => {
-    console.log(`🦇 Servidor VTM escuchando en http://localhost:${port}`);
+app.listen(port, async () => {
+    console.log(`bat Servidor VTM escuchando en http://localhost:${port}`);
+    
+    // Esto intenta crear la columna automáticamente si no existe al iniciar el servidor
+    try {
+        await pool.query('ALTER TABLE characters ADD COLUMN IF NOT EXISTS stars INTEGER DEFAULT 0');
+        console.log("Base de Datos: Columna 'stars' verificada/creada.");
+    } catch (err) {
+        console.error("Error al verificar la columna stars:", err.message);
+    }
 });
-
