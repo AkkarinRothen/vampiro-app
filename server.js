@@ -354,3 +354,50 @@ app.get('/update-db-v5', async (req, res) => {
         res.send("Error (o ya actualizado): " + err.message);
     }
 });
+
+// --- GESTIÓN DE CRÓNICAS (SAGAS) ---
+
+// A. Crear Nueva Crónica
+app.post('/api/chronicles', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo el Narrador inicia crónicas." });
+    const { title, cover_image } = req.body;
+    try {
+        await pool.query('INSERT INTO chronicles (title, cover_image) VALUES ($1, $2)', [title, cover_image]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// B. Editar Crónica (Título/Portada)
+app.put('/api/chronicles/:id', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Denegado" });
+    const { title, cover_image } = req.body;
+    try {
+        await pool.query('UPDATE chronicles SET title=$1, cover_image=$2 WHERE id=$3', [title, cover_image, req.params.id]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// C. Borrar Crónica (Y todo su contenido en cascada)
+app.delete('/api/chronicles/:id', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Denegado" });
+    try {
+        // Primero borramos lo de adentro para no dejar basura
+        await pool.query('DELETE FROM chronicle_sections WHERE chronicle_id = $1', [req.params.id]);
+        await pool.query('DELETE FROM chronicle_characters WHERE chronicle_id = $1', [req.params.id]);
+        // Finalmente la crónica
+        await pool.query('DELETE FROM chronicles WHERE id = $1', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- GESTIÓN DE LORE (Actualización) ---
+
+// D. Editar Lore existente
+app.put('/api/lore/:id', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Denegado" });
+    const { title, category, content } = req.body;
+    try {
+        await pool.query('UPDATE lore SET title=$1, category=$2, content=$3 WHERE id=$4', [title, category, content, req.params.id]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});

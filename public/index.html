@@ -12,6 +12,9 @@
 </head>
 <body>
 
+    <!-- ==========================================
+         PANTALLA DE LOGIN
+         ========================================== -->
     <div id="login-screen" class="justify-content-center align-items-center">
         <div class="card bg-dark text-white p-4 shadow-lg" style="width: 380px;">
             <div class="text-center mb-4">
@@ -35,21 +38,29 @@
             <div class="mb-3">
                 <input type="password" id="login-pass" class="form-control znk-input" placeholder="Contraseña">
             </div>
-            <button id="btn-action" onclick="handleAuth()" class="btn btn-danger w-100 fw-bold">ENTRAR</button>
+            <button id="btn-action" data-action="handleAuth" class="btn btn-danger w-100 fw-bold">ENTRAR</button>
             
             <p id="login-error" class="text-danger mt-3 text-center small" style="display:none;"></p>
             
             <div class="mt-3 text-center">
-                <small><a href="#" class="text-secondary text-decoration-none" onclick="toggleMode()"><span id="toggle-text">¿No tienes cuenta? Regístrate</span></a></small>
+                <small>
+                    <a href="#" class="text-secondary text-decoration-none" data-action="toggleMode">
+                        <span id="toggle-text">¿No tienes cuenta? Regístrate</span>
+                    </a>
+                </small>
             </div>
         </div>
     </div>
 
+    <!-- ==========================================
+         APLICACIÓN PRINCIPAL
+         ========================================== -->
     <div id="app-screen" class="fade-in" style="display: none;">
         
+        <!-- NAVBAR -->
         <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
             <div class="container-fluid px-4">
-                <a class="navbar-brand text-blood fw-bold d-flex align-items-center" href="#" onclick="switchView('view-sagas')">
+                <a class="navbar-brand text-blood fw-bold d-flex align-items-center" href="#" data-action="switchView" data-params='["view-sagas"]'>
                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Vampire-_The_Masquerade_%28Logo%29.svg/960px-Vampire-_The_Masquerade_%28Logo%29.svg.png" width="25" class="me-2">
                     VTM 5E
                 </a>
@@ -59,47 +70,44 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav me-auto">
-                        <li class="nav-item"><a class="nav-link active" onclick="switchView('view-sagas', this)">Sagas</a></li>
-                        <li class="nav-item"><a class="nav-link" onclick="switchView('view-characters', this)">Cargar PJ</a></li>
-                        <li class="nav-item"><a class="nav-link" onclick="switchView('view-list', this)">Mis Personajes</a></li>
-                        <li class="nav-item"><a class="nav-link" onclick="switchView('view-rules', this)">Reglas</a></li>
+                        <li class="nav-item">
+                            <a class="nav-link active" data-action="switchView" data-params='["view-sagas"]'>Sagas</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-action="switchView" data-params='["view-characters"]'>Cargar PJ</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-action="switchView" data-params='["view-list"]'>Mis Personajes</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-action="switchView" data-params='["view-lore"]'>Archivos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-action="switchView" data-params='["view-rules"]'>Reglas</a>
+                        </li>
                     </ul>
                     <span class="navbar-text small text-muted me-3" id="user-display">Usuario</span>
-                    <button onclick="logout()" class="btn btn-outline-secondary btn-sm" style="border:none;">SALIR</button>
+                    <button data-action="logout" class="btn btn-outline-secondary btn-sm" style="border:none;">SALIR</button>
                 </div>
             </div>
         </nav>
 
         <div class="container py-5">
             
+            <!-- ==========================================
+                 VISTA: SAGAS (HOME)
+                 ========================================== -->
             <div id="view-sagas" class="view-section fade-in">
-                <div class="row g-4 justify-content-center">
-                    <div class="col-md-3 col-sm-6">
-                        <div class="saga-card" onclick="switchView('view-list', document.querySelectorAll('.nav-link')[2])">
-                            <img src="https://i.pinimg.com/736x/21/04/63/210463ecb7ea2687a2202b28c2536b04.jpg" class="saga-img">
-                            <div class="saga-title">Crónicas de Chicago</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="saga-card" onclick="switchView('view-list', document.querySelectorAll('.nav-link')[2])">
-                            <img src="https://i.pinimg.com/736x/6f/a9/58/6fa95869408e06a77f3b890a597fa623.jpg" class="saga-img">
-                            <div class="saga-title">La Caída de Londres</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="saga-card">
-                            <img src="https://cdnb.artstation.com/p/assets/images/images/031/653/561/large/ptah-art-asset.jpg" class="saga-img" style="filter: grayscale(1);">
-                            <div class="saga-title text-muted">Nueva Crónica...</div>
-                        </div>
-                    </div>
-                </div>
+                <div class="row g-4 justify-content-center"></div>
             </div>
 
+            <!-- ==========================================
+                 VISTA: CARGAR PERSONAJE
+                 ========================================== -->
             <div id="view-characters" class="view-section fade-in" style="display: none;">
                 <div class="row justify-content-center">
                     <div class="col-md-8">
                         <h4 class="text-white mb-4 border-bottom border-secondary pb-2">Registro de Vástago</h4>
-                        
                         <div class="card bg-dark border border-secondary p-4 shadow">
                             <div class="row mb-3">
                                 <div class="col-md-6">
@@ -111,11 +119,10 @@
                                     <input type="number" id="gen" class="form-control znk-input" placeholder="Ej. 13">
                                 </div>
                             </div>
-
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="text-warning small">Clan</label>
-                                    <select id="clan" class="form-select znk-input" onchange="onClanChange()">
+                                    <select id="clan" class="form-select znk-input" data-action="onClanChange">
                                         <option>Cargando...</option>
                                     </select>
                                 </div>
@@ -126,13 +133,10 @@
                                     </select>
                                 </div>
                             </div>
-
                             <div class="mb-4">
                                 <label class="text-blood small fw-bold mb-2">Disciplinas Conocidas</label>
-                                <div id="disciplines-container" class="p-3 border border-secondary rounded" style="background: rgba(0,0,0,0.3);">
-                                    </div>
+                                <div id="disciplines-container" class="p-3 border border-secondary rounded" style="background: rgba(0,0,0,0.3);"></div>
                             </div>
-
                             <div class="row mb-4">
                                 <div class="col-md-8">
                                     <label class="text-muted small">Retrato</label>
@@ -149,17 +153,19 @@
                                     </select>
                                 </div>
                             </div>
-
-                            <button onclick="saveCharacter()" class="btn btn-danger w-100 py-2 fw-bold" style="letter-spacing: 2px;">ABRAZAR</button>
+                            <button data-action="saveCharacter" class="btn btn-danger w-100 py-2 fw-bold" style="letter-spacing: 2px;">ABRAZAR</button>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- ==========================================
+                 VISTA: LISTA DE PERSONAJES
+                 ========================================== -->
             <div id="view-list" class="view-section fade-in" style="display: none;">
                 <h4 class="text-blood border-bottom border-secondary pb-2 mb-4">Coterie & Aliados</h4>
                 <div id="pc-list" class="row g-4 mb-5"></div>
-
+                
                 <h4 class="text-warning border-bottom border-secondary pb-2 mb-4">Antagonistas & NPCs</h4>
                 <div id="npc-list" class="row g-4"></div>
                 
@@ -169,6 +175,46 @@
                 </div>
             </div>
 
+            <!-- ==========================================
+                 VISTA: ARCHIVOS DE LORE
+                 ========================================== -->
+            <div id="view-lore" class="view-section fade-in" style="display: none;">
+                <h2 class="text-blood mb-4">Archivos de la Ciudad</h2>
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <button data-action="showLoreForm" class="btn btn-danger w-100 mb-3 fw-bold">Nuevo Documento</button>
+                        
+                        <div id="lore-form-card" class="card p-3 mb-3 border-blood" style="display:none; background: #111;">
+                            <input type="hidden" id="lore-id">
+                            <input type="text" id="lore-title" class="form-control znk-input mb-2" placeholder="Título (ej. Sesión 1)">
+                            <select id="lore-cat" class="form-select znk-input mb-2">
+                                <option value="Sesión">Diario de Sesión</option>
+                                <option value="Lore">Lore / Pista</option>
+                                <option value="Carta">Carta / Mensaje</option>
+                            </select>
+                            <textarea id="lore-content" class="form-control znk-input mb-2" rows="5" placeholder="Escribe aquí..."></textarea>
+                            <div class="d-flex gap-2">
+                                <button data-action="saveLore" class="btn btn-sm btn-danger flex-grow-1">Guardar</button>
+                                <button data-action="hideLoreForm" class="btn btn-sm btn-outline-secondary">Cancelar</button>
+                            </div>
+                        </div>
+
+                        <div id="lore-list" class="list-group rounded-0"></div>
+                    </div>
+                    <div class="col-md-8">
+                        <div id="lore-reader" class="card p-5 bg-dark border border-secondary" style="min-height: 400px;">
+                            <div class="text-center text-muted mt-5">
+                                <h1 style="opacity: 0.2">⚜️</h1>
+                                <p>Selecciona un archivo.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==========================================
+                 VISTA: REGLAS
+                 ========================================== -->
             <div id="view-rules" class="view-section fade-in" style="display: none;">
                 <div class="card p-5">
                     <h2 class="text-blood">Reglas de la Casa</h2>
@@ -180,77 +226,125 @@
                     </ul>
                 </div>
             </div>
-<div id="view-chronicle-detail" class="view-section fade-in" style="display: none;">
-                
+
+            <!-- ==========================================
+                 VISTA: DETALLE DE CRÓNICA
+                 ========================================== -->
+            <div id="view-chronicle-detail" class="view-section fade-in" style="display: none;">
                 <div class="chronicle-header mb-5">
-                    <h1 id="detail-title" class="text-warning ms-3 m-0">Título de la Crónica</h1>
-                    
+                    <h1 id="detail-title" class="text-warning ms-3 m-0">Título</h1>
                     <div class="d-flex align-items-center me-3">
-                        <div id="detail-roster" class="d-flex">
-                            </div>
-                        <button id="btn-add-char" onclick="openRosterModal()" class="btn btn-sm btn-outline-warning ms-3 rounded-circle" style="width: 40px; height: 40px;">+</button>
+                        <div id="detail-roster" class="d-flex"></div>
+                        <button id="btn-add-char" data-action="openRosterModal" class="btn btn-sm btn-outline-warning ms-3 rounded-circle" style="width: 40px; height: 40px;">+</button>
                     </div>
                 </div>
-
-                <div id="detail-content" class="container">
-                    </div>
-
+                <div id="detail-content" class="container"></div>
+                
+                <!-- Panel de Narrador -->
                 <div id="admin-story-controls" class="text-center mt-5 mb-5 p-4 border border-secondary" style="border-style: dashed !important; display:none;">
                     <h4 class="text-muted">Narrador: Agregar Evento</h4>
-                    <input type="text" id="new-section-title" class="form-control znk-input mb-2" placeholder="Título del suceso">
+                    <input type="text" id="new-section-title" class="form-control znk-input mb-2" placeholder="Título">
                     <textarea id="new-section-text" class="form-control znk-input mb-2" rows="4" placeholder="Descripción..."></textarea>
-                    
                     <div class="input-group mb-3">
                         <input type="file" id="new-section-file" class="form-control znk-input" accept="image/*">
                         <input type="text" id="new-section-url" class="form-control znk-input" placeholder="O URL...">
                     </div>
-                    
-                    <button onclick="addStorySection()" class="btn btn-danger">Escribir en la Historia</button>
+                    <button data-action="addStorySection" class="btn btn-danger">Escribir en la Historia</button>
                 </div>
             </div>
+
         </div>
     </div>
-<div id="roster-modal" class="modal fade" tabindex="-1">
+
+    <!-- ==========================================
+         MODALES
+         ========================================== -->
+    
+    <!-- Modal: Agregar personaje al roster -->
+    <div id="roster-modal" class="modal fade" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content bg-dark text-white border-warning">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title text-warning">Invocar Vástago a la Escena</h5>
+                    <h5 class="modal-title text-warning">Invocar Vástago</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <select id="roster-select" class="form-select znk-input mb-3"></select>
-                    <button onclick="addToRoster()" class="btn btn-warning w-100">Agregar</button>
+                    <button data-action="addToRoster" class="btn btn-warning w-100">Agregar</button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Modal: Editar sección de historia -->
     <div id="edit-story-modal" class="modal fade" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content bg-dark text-white border-primary">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title text-info">Corregir la Historia</h5>
+                    <h5 class="modal-title text-info">Corregir Historia</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="hidden" id="edit-section-id"> <label class="small text-muted">Título</label>
+                    <input type="hidden" id="edit-section-id">
+                    <label class="small text-muted">Título</label>
                     <input type="text" id="edit-section-title" class="form-control znk-input mb-3">
-                    
                     <label class="small text-muted">Contenido</label>
                     <textarea id="edit-section-content" class="form-control znk-input mb-3" rows="5"></textarea>
-                    
-                    <label class="small text-muted">Imagen (Deja vacío para mantener la actual)</label>
+                    <label class="small text-muted">Imagen</label>
                     <div class="input-group mb-3">
                         <input type="file" id="edit-section-file" class="form-control znk-input" accept="image/*">
-                        <input type="text" id="edit-section-url" class="form-control znk-input" placeholder="O URL...">
+                        <input type="text" id="edit-section-url" class="form-control znk-input" placeholder="URL...">
                     </div>
-                    <input type="hidden" id="edit-section-old-img"> 
-
-                    <button onclick="submitEditStory()" class="btn btn-info w-100">Guardar Cambios</button>
+                    <input type="hidden" id="edit-section-old-img">
+                    <button data-action="submitEditStory" class="btn btn-info w-100">Guardar Cambios</button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Modal: Crear/Editar crónica -->
+ <div class="modal fade" id="chronicle-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="chronicle-modal-title">Nueva Crónica</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="chronicle-id">
+                <input type="hidden" id="chronicle-old-img">
+                
+                <div class="mb-3">
+                    <label class="form-label">Título</label>
+                    <input type="text" class="form-control" id="chronicle-title" placeholder="Nombre de la crónica">
+                </div>
+                
+                <!-- Preview de imagen actual -->
+                <div id="chronicle-img-preview"></div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Subir Imagen</label>
+                    <input type="file" class="form-control" id="chronicle-file" accept="image/*">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">O URL de Imagen</label>
+                    <input type="text" class="form-control" id="chronicle-url" placeholder="https://...">
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" 
+                        class="btn btn-blood" 
+                        data-action="submitChronicleForm">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-   <script type="module" src="./js/main.js"></script>
+    <script type="module" src="./js/main.js"></script>
 </body>
 </html>

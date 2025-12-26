@@ -1,8 +1,8 @@
-import { state, setUser } from './state.js';
-import { loadAllData, showApp } from './main.js'; // Referencia circular manejada
+import { setUser } from './state.js';
 
 let isRegisterMode = false;
 
+// Alternar entre Login y Registro
 export function toggleMode() {
     isRegisterMode = !isRegisterMode;
     const title = document.getElementById('login-title');
@@ -20,6 +20,7 @@ export function toggleMode() {
     }
 }
 
+// Manejar el botón "ENTRAR"
 export async function handleAuth() {
     const u = document.getElementById('login-user').value;
     const p = document.getElementById('login-pass').value;
@@ -39,6 +40,8 @@ export async function handleAuth() {
                 alert(data.message);
                 toggleMode(); 
             } else {
+                // ÉXITO: Recargamos la página. 
+                // Al recargar, main.js arrancará de nuevo y checkSession detectará el usuario.
                 location.reload();
             }
         } else {
@@ -48,11 +51,12 @@ export async function handleAuth() {
     } catch (err) { console.error(err); }
 }
 
+// Verificar sesión (Solo devuelve true/false, NO toca la pantalla)
 export async function checkSession() {
     try {
+        // Ocultar visualmente mientras carga
         const loginScreen = document.getElementById('login-screen');
         const appScreen = document.getElementById('app-screen');
-        
         if(loginScreen) loginScreen.style.display = 'none';
         if(appScreen) appScreen.style.display = 'none';
 
@@ -61,13 +65,12 @@ export async function checkSession() {
         
         if (data.success) {
             setUser(data.username, data.role);
-            showApp(); 
+            return true; // Está logueado
         } else {
-            if(loginScreen) loginScreen.style.display = 'flex';
+            return false; // No está logueado
         }
     } catch (e) {
-        if(document.getElementById('login-screen')) 
-            document.getElementById('login-screen').style.display = 'flex';
+        return false;
     }
 }
 

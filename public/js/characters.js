@@ -1,3 +1,7 @@
+// ==========================================
+// ARCHIVO: public/js/characters.js
+// ==========================================
+
 import { state } from './state.js';
 import { convertToBase64 } from './utils.js';
 
@@ -25,26 +29,35 @@ const VTM_DATA = {
         "Animalismo", "Auspex", "Celeridad", "Dominación", "Fortaleza", "Ofuscación", 
         "Potencia", "Presencia", "Protean", "Hechicería de Sangre", "Olvido", "Alquimia de Sangre Débil"
     ],
-    predator_types: ["Callejero", "Consensualista", "Granjero", "Osiris", "Sandman", "Sirena", "Escena", "Sanguijuela", "Bolsa de Sangre"]
+    predator_types: [
+        "Callejero", "Consensualista", "Granjero", "Osiris", "Sandman", 
+        "Sirena", "Escena", "Sanguijuela", "Bolsa de Sangre"
+    ]
 };
 
+/**
+ * Inicializa el formulario de creación de personajes
+ */
 export function initCharForm() {
     const clanSelect = document.getElementById('clan');
     const predSelect = document.getElementById('predator_type');
     const discContainer = document.getElementById('disciplines-container');
     
-    if(!clanSelect) return;
+    if (!clanSelect) return;
 
+    // Popular select de clanes
     clanSelect.innerHTML = '<option value="">Selecciona Clan...</option>';
     Object.keys(VTM_DATA.clans).forEach(c => {
         clanSelect.innerHTML += `<option value="${c}">${c}</option>`;
     });
 
+    // Popular select de tipos de depredador
     predSelect.innerHTML = '<option value="">Tipo de Depredador...</option>';
     VTM_DATA.predator_types.forEach(p => {
         predSelect.innerHTML += `<option value="${p}">${p}</option>`;
     });
 
+    // Popular checkboxes de disciplinas
     discContainer.innerHTML = VTM_DATA.all_disciplines.map(d => `
         <div class="form-check form-check-inline">
             <input class="form-check-input disc-check" type="checkbox" value="${d}" id="disc-${d}">
@@ -53,12 +66,17 @@ export function initCharForm() {
     `).join('');
 }
 
+/**
+ * Resalta las disciplinas del clan seleccionado
+ */
 export function onClanChange() {
     const clan = document.getElementById('clan').value;
     const clanDiscs = VTM_DATA.clans[clan] || [];
 
     VTM_DATA.all_disciplines.forEach(d => {
         const label = document.getElementById(`label-${d}`);
+        if (!label) return;
+        
         if (clanDiscs.includes(d)) {
             label.classList.add('text-warning', 'fw-bold');
             label.classList.remove('text-muted');
@@ -69,15 +87,26 @@ export function onClanChange() {
     });
 }
 
+/**
+ * Guarda un nuevo personaje o actualiza uno existente
+ */
 export async function saveCharacter() {
     const fileInput = document.getElementById('image_file');
     const urlInput = document.getElementById('image_url');
+    
+    // Gestión de imagen
     let finalImage = urlInput.value;
-    if (fileInput.files.length > 0) finalImage = await convertToBase64(fileInput.files[0]);
+    if (fileInput.files.length > 0) {
+        finalImage = await convertToBase64(fileInput.files[0]);
+    }
 
+    // Recoger disciplinas seleccionadas
     const selectedDiscs = [];
-    document.querySelectorAll('.disc-check:checked').forEach(c => selectedDiscs.push(c.value));
+    document.querySelectorAll('.disc-check:checked').forEach(c => {
+        selectedDiscs.push(c.value);
+    });
 
+    // Construir objeto del personaje
     const char = {
         name: document.getElementById('name').value,
         clan: document.getElementById('clan').value,
@@ -88,39 +117,92 @@ export async function saveCharacter() {
         image_url: finalImage
     };
 
-    if(!char.name) { alert("Falta nombre"); return; }
+    // Validación básica
+    if (!char.name) {
+        alert("Falta nombre del vástago");
+        return;
+    }
 
-    await fetch('/api/characters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(char)
-    });
-    
-    document.getElementById('name').value = '';
-    loadCharacters();
-    alert("Vástago abrazado correctamente.");
+    try {
+        await fetch('/api/characters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(char)
+        });
+        
+        // Limpiar formulario
+        document.getElementById('name').value = '';
+        document.getElementById('gen').value = '';
+        document.getElementById('clan').value = '';
+        document.getElementById('predator_type').value = '';
+        document.getElementById('image_url').value = '';
+        document.getElementById('image_file').value = '';
+        document.querySelectorAll('.disc-check').forEach(cb => cb.checked = false);
+        
+        // Recargar lista
+        loadCharacters();
+        alert("Vástago abrazado correctamente.");
+        
+    } catch (error) {
+        console.error('Error al guardar personaje:', error);
+        alert('Error al crear el personaje. Intenta de nuevo.');
+    }
 }
 
+/**
+ * Carga y muestra todos los personajes
+ */
 export async function loadCharacters() {
-    const res = await fetch('/api/characters');
-    const data = await res.json();
-    renderList('pc-list', data.pcs, 'text-blood');
-    renderList('npc-list', data.npcs, 'text-warning');
+    try {
+        const res = await fetch('/api/characters');
+        const data = await res.json();
+        
+        renderList('pc-list', data.pcs, 'text-blood');
+        renderList('npc-list', data.npcs, 'text-warning');
+        
+    } catch (error) {
+        console.error('Error al cargar personajes:', error);
+    }
 }
 
+/**
+ * Renderiza una lista de personajes en un contenedor específico
+ */
 function renderList(elementId, list, colorClass) {
     const el = document.getElementById(elementId);
-    if(!el) return;
+    if (!el) return;
 
     el.innerHTML = list.map(char => {
         const image = char.image_url || 'https://via.placeholder.com/150';
+        
+        // Parsear disciplinas (viene como JSON string)
         let discs = [];
-        try { discs = JSON.parse(char.disciplines); } catch(e) {}
-        const discBadges = discs.map(d => `<span class="badge bg-dark border border-secondary text-secondary me-1" style="font-size:0.6rem">${d.substring(0,3)}</span>`).join('');
+        try {
+            discs = JSON.parse(char.disciplines);
+        } catch (e) {
+            console.warn(`Error parseando disciplinas para ${char.name}:`, e);
+        }
+        
+        // Badges de disciplinas (solo 3 primeras letras)
+        const discBadges = discs.map(d => `
+            <span class="badge bg-dark border border-secondary text-secondary me-1" 
+                  style="font-size:0.6rem"
+                  title="${d}">
+                ${d.substring(0, 3)}
+            </span>
+        `).join('');
 
+        // Botón de eliminar (solo para admin o creador)
         let deleteBtn = '';
         if (state.role === 'admin' || char.created_by === state.username) {
-            deleteBtn = `<button onclick="window.deleteCharacter(${char.id})" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 shadow" style="z-index: 10;">✕</button>`;
+            deleteBtn = `
+                <button data-action="deleteCharacter" 
+                        data-params='[${char.id}]'
+                        class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 shadow" 
+                        style="z-index: 10;"
+                        title="Enviar al cementerio">
+                    ✕
+                </button>`;
         }
 
         return `
@@ -129,14 +211,24 @@ function renderList(elementId, list, colorClass) {
                 ${deleteBtn}
                 <div class="row g-0 h-100">
                     <div class="col-5">
-                        <img src="${image}" class="img-fluid w-100 h-100" style="object-fit: cover;">
+                        <img src="${image}" 
+                             class="img-fluid w-100 h-100" 
+                             style="object-fit: cover;"
+                             alt="${char.name}">
                     </div>
                     <div class="col-7">
                         <div class="card-body py-2 px-3">
-                            <h5 class="card-title ${colorClass} text-truncate mb-1">${char.name}</h5>
-                            <h6 class="card-subtitle text-muted mb-1 small">${char.clan}</h6>
+                            <h5 class="card-title ${colorClass} text-truncate mb-1" 
+                                title="${char.name}">
+                                ${char.name}
+                            </h5>
+                            <h6 class="card-subtitle text-muted mb-1 small">
+                                ${char.clan}
+                            </h6>
                             <div class="mb-2">${discBadges}</div>
-                            <p class="card-text small mb-0 text-muted">Gen: ${char.generation} | ${char.predator_type || '-'}</p>
+                            <p class="card-text small mb-0 text-muted">
+                                Gen: ${char.generation} | ${char.predator_type || '-'}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -145,12 +237,27 @@ function renderList(elementId, list, colorClass) {
     }).join('');
 }
 
+/**
+ * Elimina un personaje (lo envía al cementerio)
+ */
 export async function deleteCharacter(id) {
-    if (!confirm("¿Enviar al cementerio?")) return;
-    await fetch(`/api/characters/${id}`, { method: 'DELETE' });
-    loadCharacters();
-    // Importación dinámica para evitar ciclos
-    import('./lore.js').then(module => {
-        if(state.role === 'admin') module.loadGraveyard();
-    });
+    if (!confirm("¿Enviar este vástago al cementerio?")) return;
+    
+    try {
+        await fetch(`/api/characters/${id}`, { method: 'DELETE' });
+        
+        // Recargar lista de personajes
+        loadCharacters();
+        
+        // Recargar cementerio si es admin (importación dinámica para evitar ciclos)
+        if (state.role === 'admin') {
+            import('./lore.js').then(module => {
+                module.loadGraveyard();
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error al eliminar personaje:', error);
+        alert('Error al eliminar el personaje. Intenta de nuevo.');
+    }
 }

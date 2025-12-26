@@ -2,7 +2,8 @@ export const state = {
     username: null,
     role: null,
     currentChronicleId: null,
-    loreData: [] // Cache para el lore
+    loreData: [],
+    sagas: [] // <--- NUEVO: Almacén de crónicas
 };
 
 export function setUser(username, role) {
@@ -16,4 +17,8 @@ export function setChronicleId(id) {
 
 export function setLoreData(data) {
     state.loreData = data;
+}
+
+export function setSagas(list) {
+    state.sagas = list;
 }
