@@ -5,6 +5,7 @@ const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const path = require('path'); // <--- CAMBIO 1: Importar Path
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -13,16 +14,19 @@ const port = process.env.PORT || 3000;
 // 1. CONFIGURACIÓN MIDDLEWARE
 // ==========================================
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Límite alto para imágenes
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(express.static('public'));
+
+// <--- CAMBIO 2: Servir los archivos estáticos de React (Build de Vite)
+// En lugar de 'public', apuntamos a la carpeta 'dist' dentro de 'client'
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Configuración de Sesión
 app.use(session({
     secret: process.env.SESSION_SECRET || 'secreto_vampirico',
     resave: false,
-    saveUninitialized: false, // Mejor 'false' para no guardar sesiones vacías
-    cookie: { secure: false } // 'true' solo si usas HTTPS
+    saveUninitialized: false,
+    cookie: { secure: false } // Pon 'true' si usas HTTPS en producción
 }));
 
 app.use(passport.initialize());
@@ -39,7 +43,6 @@ const pool = new Pool({
 // ==========================================
 // 3. PASSPORT (Google Auth)
 // ==========================================
-// Nota: Si no usas Google Login aún, puedes comentar este bloque si da error por falta de credenciales en .env
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
@@ -75,7 +78,6 @@ passport.deserializeUser(async (id, done) => {
 // 4. RUTAS DE AUTENTICACIÓN
 // ==========================================
 
-// Login Normal
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -92,7 +94,6 @@ app.post('/api/login', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Registro Normal
 app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ message: "Faltan datos" });
@@ -106,14 +107,12 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// Google Auth Routes
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile'] }));
 app.get('/auth/google/callback', 
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => res.redirect('/')
 );
 
-// Verificar Sesión Actual
 app.get('/api/current_user', (req, res) => {
     if (req.isAuthenticated()) {
         res.json({ success: true, username: req.user.username, role: req.user.role });
@@ -122,7 +121,6 @@ app.get('/api/current_user', (req, res) => {
     }
 });
 
-// Logout
 app.get('/api/logout', (req, res, next) => {
     req.logout((err) => {
         if (err) return next(err);
@@ -134,7 +132,6 @@ app.get('/api/logout', (req, res, next) => {
 // 5. API: PERSONAJES (V5)
 // ==========================================
 
-// Obtener personajes (Solo activos)
 app.get('/api/characters', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM characters WHERE is_deleted = false ORDER BY id DESC');
@@ -144,10 +141,8 @@ app.get('/api/characters', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Crear personaje
 app.post('/api/characters', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "No estás logueado" });
-    
     const { name, clan, generation, type, image_url, disciplines, predator_type } = req.body;
     const created_by = req.user.username;
 
@@ -163,29 +158,24 @@ app.post('/api/characters', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Borrar personaje (Soft Delete)
 app.delete('/api/characters/:id', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "No estás logueado" });
-
     const { id } = req.params;
     const { username, role } = req.user;
 
     try {
         const charResult = await pool.query('SELECT * FROM characters WHERE id = $1', [id]);
         if (charResult.rows.length === 0) return res.status(404).json({ error: "No encontrado" });
-        
         const character = charResult.rows[0];
 
         if (role !== 'admin' && character.created_by !== username) {
             return res.status(403).json({ error: "No puedes borrar personajes ajenos" });
         }
-
         await pool.query('UPDATE characters SET is_deleted = true WHERE id = $1', [id]);
         res.json({ message: "Personaje eliminado (soft delete)" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Cementerio y Restauración (Solo Admin)
 app.get('/api/graveyard', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Acceso denegado" });
     try {
@@ -206,7 +196,6 @@ app.put('/api/restore/:id', async (req, res) => {
 // 6. API: CRÓNICAS (SAGAS)
 // ==========================================
 
-// Obtener todas
 app.get('/api/chronicles', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM chronicles ORDER BY id DESC');
@@ -214,7 +203,6 @@ app.get('/api/chronicles', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Crear Crónica
 app.post('/api/chronicles', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo Admin" });
     const { title, cover_image } = req.body;
@@ -224,7 +212,6 @@ app.post('/api/chronicles', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Editar Crónica
 app.put('/api/chronicles/:id', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo Admin" });
     const { title, cover_image } = req.body;
@@ -234,7 +221,6 @@ app.put('/api/chronicles/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Borrar Crónica (Cascada manual)
 app.delete('/api/chronicles/:id', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo Admin" });
     try {
@@ -245,7 +231,6 @@ app.delete('/api/chronicles/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Obtener DETALLE de una crónica
 app.get('/api/chronicles/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -265,7 +250,6 @@ app.get('/api/chronicles/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Vincular personaje a crónica
 app.post('/api/chronicles/:id/join', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo Admin" });
     const { id } = req.params;
@@ -276,7 +260,6 @@ app.post('/api/chronicles/:id/join', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Desvincular personaje
 app.delete('/api/chronicles/:id/roster/:charId', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo Admin" });
     try {
@@ -285,7 +268,6 @@ app.delete('/api/chronicles/:id/roster/:charId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Agregar Sección de Historia
 app.post('/api/chronicles/:id/sections', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo Admin" });
     const { id } = req.params;
@@ -296,7 +278,6 @@ app.post('/api/chronicles/:id/sections', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Editar Sección
 app.put('/api/chronicles/sections/:id', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo Admin" });
     const { title, content, image_url } = req.body;
@@ -306,7 +287,6 @@ app.put('/api/chronicles/sections/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Borrar Sección
 app.delete('/api/chronicles/sections/:id', async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).json({ error: "Solo Admin" });
     try {
@@ -314,7 +294,6 @@ app.delete('/api/chronicles/sections/:id', async (req, res) => {
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
-
 
 // ==========================================
 // 7. API: LORE (ARCHIVOS)
@@ -353,12 +332,10 @@ app.delete('/api/lore/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-
 // ==========================================
 // 8. RUTAS DE CONFIGURACIÓN Y MANTENIMIENTO
 // ==========================================
 
-// Setup Tablas Crónicas
 app.get('/setup-chronicles', async (req, res) => {
     try {
         await pool.query(`CREATE TABLE IF NOT EXISTS chronicles (id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, cover_image TEXT)`);
@@ -369,7 +346,6 @@ app.get('/setup-chronicles', async (req, res) => {
     } catch (err) { res.send("Error: " + err.message); }
 });
 
-// Setup Tabla Lore (Versión Corregida)
 app.get('/fix-lore-table', async (req, res) => {
     try {
         await pool.query('DROP TABLE IF EXISTS lore');
@@ -382,6 +358,15 @@ app.get('/fix-lore-table', async (req, res) => {
         )`);
         res.send("✅ Tabla Lore reparada correctamente.");
     } catch (e) { res.send("Error: " + e.message); }
+});
+
+// ==========================================
+// 9. CATCH-ALL ROUTE (PARA REACT ROUTER)
+// ==========================================
+// <--- CAMBIO 3: Esto permite que React Router controle las URLs
+// Cualquier petición que NO sea API, devuelve el HTML principal
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 // Arrancar Servidor
