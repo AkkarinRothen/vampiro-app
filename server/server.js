@@ -254,11 +254,10 @@ app.get('/api/characters', async (req, res) => {
 });
 const cloudinary = require('cloudinary').v2;
 
-// Configuración (Añade tus credenciales en el .env)
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, // <--- Verifica este nombre
+  api_key: process.env.CLOUDINARY_API_KEY,       // <--- Verifica este nombre
+  api_secret: process.env.CLOUDINARY_API_SECRET  // <--- Verifica este nombre
 });
 
 // RUTA ACTUALIZADA DE CREACIÓN
