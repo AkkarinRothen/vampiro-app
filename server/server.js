@@ -360,12 +360,11 @@ app.get('/fix-lore-table', async (req, res) => {
     } catch (e) { res.send("Error: " + e.message); }
 });
 
+
+// 9. CATCH-ALL ROUTE (SOLUCIÓN FIX)
 // ==========================================
-// 9. CATCH-ALL ROUTE (PARA REACT ROUTER)
-// ==========================================
-// <--- CAMBIO 3: Esto permite que React Router controle las URLs
-// Cualquier petición que NO sea API, devuelve el HTML principal
-app.get('*', (req, res) => {
+// Usamos /(.*)/ en lugar de '*' para evitar el error de "Missing parameter name"
+app.get(/(.*)/, (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
