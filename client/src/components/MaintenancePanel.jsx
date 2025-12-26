@@ -13,7 +13,44 @@ function MaintenancePanel({ user }) {
             alert(`Error: ${err.message}`);
         }
     };
+// Agrega estas funciones dentro de MaintenancePanel
+const exportData = async () => {
+    const res = await fetch('/api/export-data');
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vampiro_backup_${new Date().toLocaleDateString()}.json`;
+    a.click();
+};
 
+const importData = async (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        const data = JSON.parse(event.target.result);
+        const res = await fetch('/api/import-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        alert(result.message);
+    };
+    reader.readAsText(file);
+};
+
+// Y en el return del componente, agrega estos botones:
+<div className="mt-4 flex flex-col gap-2">
+    <button onClick={exportData} className="bg-blue-900/40 border border-blue-800 p-2 rounded text-xs hover:bg-blue-800">
+        📥 Descargar Respaldo (JSON)
+    </button>
+    <label className="bg-green-900/40 border border-green-800 p-2 rounded text-xs hover:bg-green-800 cursor-pointer text-center">
+        📤 Subir Respaldo a Neon
+        <input type="file" onChange={importData} className="hidden" />
+    </label>
+</div>
     return (
         <div className="mt-10 p-6 bg-neutral-950 border border-red-900/30 rounded-lg">
             <h2 className="text-xl font-serif text-red-600 mb-4 flex items-center gap-2">

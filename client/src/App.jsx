@@ -8,7 +8,8 @@ import CharacterList from './components/CharacterList';
 import CharacterForm from './components/CharacterForm';
 import LoreView from './components/LoreView';
 import GalleryView from './components/GalleryView';
-
+// ESTA ES LA LÍNEA QUE FALTA:
+import MaintenancePanel from './components/MaintenancePanel';
 
 function App() {
     const [user, setUser] = useState(null);
@@ -66,10 +67,13 @@ function App() {
                     {/* 6. Galeria */}
                     <Route path="/gallery" element={<GalleryView user={user} />} /> 
                     
-                    {/* 7. Panel de Mantenimiento (Solo Admin) */}
+                    {/* Tu nueva ruta de administración secreta */}
                     <Route path="/admin" element={<MaintenancePanel user={user} />} />
+    
+                    <Route path="*" element={<Navigate to="/" />} />
                     {/* Ruta por defecto: Redirigir a inicio si no existe */}
                     <Route path="*" element={<Navigate to="/" />} />
+
                 </Routes>
             </div>
         </div>

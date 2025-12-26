@@ -410,6 +410,51 @@ app.get('/update-db-stars', async (req, res) => {
     }
 });
 
+
+
+// ==========================================
+// 10. SISTEMA DE MIGRACIÓN (JSON)
+// ==========================================
+
+// Exportar todo a JSON
+app.get('/api/export-data', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).send("Acceso denegado");
+    try {
+        const chars = await pool.query('SELECT * FROM characters');
+        const sagas = await pool.query('SELECT * FROM chronicles');
+        const sections = await pool.query('SELECT * FROM chronicle_sections');
+        
+        res.json({
+            characters: chars.rows,
+            chronicles: sagas.rows,
+            sections: sections.rows,
+            backup_date: new Date().toISOString()
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Importar desde JSON (Carga Masiva)
+app.post('/api/import-data', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') return res.status(403).send("Acceso denegado");
+    const { characters, chronicles, sections } = req.body;
+    
+    try {
+        // Importar Personajes
+        for (const c of characters) {
+            await pool.query(
+                `INSERT INTO characters (id, name, clan, generation, type, image_url, created_by, disciplines, predator_type, stars, is_deleted) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (id) DO NOTHING`,
+                [c.id, c.name, c.clan, c.generation, c.type, c.image_url, c.created_by, c.disciplines, c.predator_type, c.stars, c.is_deleted]
+            );
+        }
+        // Importar Sagas
+        for (const s of chronicles) {
+            await pool.query(`INSERT INTO chronicles (id, title, cover_image) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`, [s.id, s.title, s.cover_image]);
+        }
+        res.json({ success: true, message: "¡Datos migrados con éxito!" });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Arrancar Servidor
 app.listen(port, async () => {
     console.log(`bat Servidor VTM escuchando en http://localhost:${port}`);
