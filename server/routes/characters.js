@@ -7,13 +7,11 @@ const cloudinary = require('../config/cloudinary');
 // MIDDLEWARES
 // ==========================================
 
-// 1. Verificar si está logueado
 const isAuth = (req, res, next) => {
     if (req.isAuthenticated()) return next();
     res.status(401).json({ error: "No logueado" });
 };
 
-// 2. Verificar si es Admin (NECESARIO PARA LA BÓVEDA)
 const isAdmin = (req, res, next) => {
     if (req.isAuthenticated() && req.user.role === 'admin') return next();
     res.status(403).json({ error: "Solo Admin" });
@@ -23,22 +21,17 @@ const isAdmin = (req, res, next) => {
 // RUTAS PRINCIPALES
 // ==========================================
 
-// GET: Listar Personajes (Con lógica de Bóveda)
+// GET: Listar Personajes
 router.get('/', async (req, res) => {
     try {
         const isUserAdmin = req.isAuthenticated() && req.user.role === 'admin';
         
-        // 1. PCs: Siempre visibles (son los jugadores)
         const pcs = await pool.query("SELECT * FROM characters WHERE type = 'PC' AND is_deleted = false ORDER BY stars DESC, name ASC");
         
-        // 2. NPCs: Filtramos según quién pregunta
         let npcQuery = "SELECT * FROM characters WHERE type = 'NPC' AND is_deleted = false";
-        
-        // Si NO es admin, ocultamos los que tienen is_hidden = true
         if (!isUserAdmin) {
             npcQuery += " AND is_hidden = false";
         }
-        
         npcQuery += " ORDER BY name ASC";
         
         const npcs = await pool.query(npcQuery);
@@ -47,12 +40,40 @@ router.get('/', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST: Crear Personaje (Soporte Mortales, Ocultos y Cloudinary)
+// GET: Obtener personaje individual
+router.get('/:id', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM characters WHERE id = $1 AND is_deleted = false', [req.params.id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Personaje no encontrado" });
+        }
+        
+        const character = result.rows[0];
+        
+        const isUserAdmin = req.isAuthenticated() && req.user.role === 'admin';
+        if (character.is_hidden && !isUserAdmin) {
+            return res.status(403).json({ error: "Acceso denegado" });
+        }
+        
+        res.json(character);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST: Crear Personaje Completo
 router.post('/', isAuth, async (req, res) => {
     let { 
         name, clan, generation, type, image_url, 
-        disciplines, predator_type, 
-        is_hidden, creature_type 
+        predator_type, is_hidden, creature_type,
+        player_name,
+        sire, age, apparent_age, date_of_birth, date_of_embrace,
+        ambition, desire, chronicle_tenets, touchstone, convictions,
+        humanity, health, willpower, blood_potency,
+        attributes, skills, disciplines, advantages,
+        resonance, hunger, appearance, personality, background, notes,
+        ban_attributes, total_experience, spent_experience
     } = req.body;
     
     const created_by = req.user.username;
@@ -64,31 +85,61 @@ router.post('/', isAuth, async (req, res) => {
             image_url = uploadRes.secure_url;
         }
 
+        // Convertir objetos/arrays a JSON
         const disciplinesString = JSON.stringify(disciplines || []);
+        const attributesString = JSON.stringify(attributes || {});
+        const skillsString = JSON.stringify(skills || {});
+        const advantagesString = JSON.stringify(advantages || []);
+        const convictionsString = JSON.stringify(convictions || []);
         
-        // Si es humano/ghoul, forzamos generación NULL
         const finalGen = (creature_type === 'human' || creature_type === 'ghoul') ? null : generation;
 
         const result = await pool.query(
             `INSERT INTO characters 
-            (name, clan, generation, type, image_url, created_by, disciplines, predator_type, stars, is_hidden, creature_type) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, $9, $10) RETURNING *`,
-            [name, clan, finalGen, type, image_url, created_by, disciplinesString, predator_type, is_hidden || false, creature_type || 'vampire']
+            (name, clan, generation, type, image_url, created_by, predator_type, 
+             stars, is_hidden, creature_type, player_name,
+             sire, age, apparent_age, date_of_birth, date_of_embrace,
+             ambition, desire, chronicle_tenets, touchstone, convictions,
+             humanity, health, willpower, blood_potency,
+             attributes, skills, disciplines, advantages, 
+             resonance, hunger, appearance, personality, background, notes,
+             ban_attributes, total_experience, spent_experience) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, $9, $10, $11, $12, $13, $14, $15,
+                    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
+                    $29, $30, $31, $32, $33, $34, $35, $36, $37) 
+            RETURNING *`,
+            [
+                name, clan, finalGen, type, image_url, created_by, predator_type,
+                is_hidden || false, creature_type || 'vampire', player_name,
+                sire, age, apparent_age, date_of_birth, date_of_embrace,
+                ambition, desire, chronicle_tenets, touchstone, convictionsString,
+                humanity || 7, health || 0, willpower || 0, blood_potency || 0,
+                attributesString, skillsString, disciplinesString, advantagesString,
+                resonance, hunger || 1, appearance, personality, background, notes,
+                ban_attributes, total_experience || 0, spent_experience || 0
+            ]
         );
         res.json(result.rows[0]);
     } catch (err) { 
-        console.error(err);
-        res.status(500).json({ error: "Error al crear personaje" }); 
+        console.error('Error creando personaje:', err);
+        res.status(500).json({ error: "Error al crear personaje", details: err.message }); 
     }
 });
 
-// PUT: Editar Personaje
+// PUT: Editar Personaje Completo
 router.put('/:id', isAuth, async (req, res) => {
     const { id } = req.params;
-    // Agregamos is_hidden y creature_type aquí también por si quieres editarlo luego
-    const { name, clan, generation, type, image_url, disciplines, predator_type, is_hidden, creature_type } = req.body;
+    let { 
+        name, clan, generation, type, image_url, predator_type, 
+        is_hidden, creature_type, player_name,
+        sire, age, apparent_age, date_of_birth, date_of_embrace,
+        ambition, desire, chronicle_tenets, touchstone, convictions,
+        humanity, health, willpower, blood_potency,
+        attributes, skills, disciplines, advantages,
+        resonance, hunger, appearance, personality, background, notes,
+        ban_attributes, total_experience, spent_experience
+    } = req.body;
     
-    // Verificación de propiedad
     const check = await pool.query('SELECT created_by FROM characters WHERE id = $1', [id]);
     if (check.rows.length === 0) return res.status(404).json({ error: "No encontrado" });
     if (req.user.role !== 'admin' && check.rows[0].created_by !== req.user.username) {
@@ -96,15 +147,83 @@ router.put('/:id', isAuth, async (req, res) => {
     }
 
     try {
+        // Convertir a JSON
         const disciplinesString = JSON.stringify(disciplines || []);
-        // Nota: Actualizamos también los campos ocultos si se envían
+        const attributesString = JSON.stringify(attributes || {});
+        const skillsString = JSON.stringify(skills || {});
+        const advantagesString = JSON.stringify(advantages || []);
+        const convictionsString = JSON.stringify(convictions || []);
+        
+        // Función para convertir valores a enteros o null
+        const toIntOrNull = (val) => {
+            if (val === '' || val === null || val === undefined) return null;
+            const parsed = parseInt(val);
+            return isNaN(parsed) ? null : parsed;
+        };
+
+        // Función para limpiar strings (no permite strings vacíos, los convierte a null)
+        const cleanString = (val) => {
+            if (val === '' || val === null || val === undefined) return null;
+            return val;
+        };
+        
         const result = await pool.query(
-            `UPDATE characters SET name=$1, clan=$2, generation=$3, type=$4, image_url=$5, disciplines=$6, predator_type=$7, is_hidden=$9, creature_type=$10 
-             WHERE id=$8 RETURNING *`,
-            [name, clan, generation, type, image_url, disciplinesString, predator_type, id, is_hidden, creature_type]
+            `UPDATE characters SET 
+                name=$1, clan=$2, generation=$3, type=$4, image_url=$5, predator_type=$6,
+                is_hidden=$7, creature_type=$8, player_name=$9,
+                sire=$10, age=$11, apparent_age=$12, date_of_birth=$13, date_of_embrace=$14,
+                ambition=$15, desire=$16, chronicle_tenets=$17, touchstone=$18, 
+                convictions=$19, humanity=$20, health=$21, willpower=$22, blood_potency=$23,
+                attributes=$24, skills=$25, disciplines=$26, advantages=$27, 
+                resonance=$28, hunger=$29,
+                appearance=$30, personality=$31, background=$32, notes=$33,
+                ban_attributes=$34, total_experience=$35, spent_experience=$36
+             WHERE id=$37 RETURNING *`,
+            [
+                name || null, 
+                clan || null, 
+                toIntOrNull(generation), 
+                type || 'NPC', 
+                image_url || null, 
+                predator_type || null,
+                is_hidden || false, 
+                creature_type || 'vampire', 
+                player_name || null,
+                sire || null, 
+                toIntOrNull(age), 
+                toIntOrNull(apparent_age), 
+                date_of_birth || null, 
+                date_of_embrace || null,
+                ambition || null, 
+                desire || null, 
+                chronicle_tenets || null, 
+                touchstone || null, 
+                convictionsString, 
+                toIntOrNull(humanity) || 7, 
+                toIntOrNull(health) || 0, 
+                toIntOrNull(willpower) || 0, 
+                toIntOrNull(blood_potency) || 0,
+                attributesString, 
+                skillsString, 
+                disciplinesString, 
+                advantagesString,
+                resonance || null, 
+                toIntOrNull(hunger) || 1,
+                appearance || null, 
+                personality || null, 
+                background || null, 
+                notes || null,
+                ban_attributes || null, 
+                toIntOrNull(total_experience) || 0, 
+                toIntOrNull(spent_experience) || 0,
+                id
+            ]
         );
         res.json(result.rows[0]);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error('Error actualizando:', err);
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 // DELETE: Borrado suave
@@ -126,7 +245,6 @@ router.delete('/:id', isAuth, async (req, res) => {
 // RUTAS DE ADMINISTRADOR
 // ==========================================
 
-// PUT: Estrellas (Rango)
 router.put('/:id/rate', isAdmin, async (req, res) => {
     try {
         const result = await pool.query('UPDATE characters SET stars = $1 WHERE id = $2 RETURNING *', [req.body.stars, req.params.id]);
@@ -134,7 +252,6 @@ router.put('/:id/rate', isAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET: Cementerio
 router.get('/graveyard', isAdmin, async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM characters WHERE is_deleted = true ORDER BY id DESC');
@@ -142,7 +259,6 @@ router.get('/graveyard', isAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PUT: Restaurar
 router.put('/restore/:id', isAdmin, async (req, res) => {
     try {
         await pool.query('UPDATE characters SET is_deleted = false WHERE id = $1', [req.params.id]);
