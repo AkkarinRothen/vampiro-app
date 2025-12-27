@@ -1,13 +1,49 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>client</title>
+    
+    <!-- SEO Básico -->
+    <meta name="description" content="Descripción de tu aplicación React" />
+    <meta name="keywords" content="react, vite, aplicación web" />
+    <meta name="author" content="Tu Nombre" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Client App" />
+    <meta property="og:description" content="Descripción de tu aplicación" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Client App" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="apple-touch-icon" href="/vite.svg" />
+    
+    <!-- Preconnect para mejorar performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#646cff" />
+    
+    <title>Client App - Tu Aplicación React</title>
   </head>
   <body>
+    <!-- Contenedor principal -->
     <div id="root"></div>
+    
+    <!-- Fallback para usuarios sin JavaScript -->
+    <noscript>
+      <div style="text-align: center; padding: 50px; font-family: system-ui;">
+        <h1>JavaScript Requerido</h1>
+        <p>Esta aplicación requiere JavaScript para funcionar. Por favor, habilítalo en tu navegador.</p>
+      </div>
+    </noscript>
+    
+    <!-- Script principal -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

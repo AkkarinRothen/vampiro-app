@@ -1,23 +1,46 @@
+/* Variables CSS para fácil personalización */
+:root {
+  --primary-color: #646cff;
+  --react-color: #61dafb;
+  --text-muted: #888;
+  --shadow-glow: 2em;
+  --transition-speed: 300ms;
+  --max-width: 1280px;
+  --spacing-sm: 1.5em;
+  --spacing-md: 2em;
+  --logo-size: 6em;
+}
+
+/* Contenedor principal */
 #root {
-  max-width: 1280px;
+  max-width: var(--max-width);
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--spacing-md);
   text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
+/* Logos */
 .logo {
-  height: 6em;
-  padding: 1.5em;
+  height: var(--logo-size);
+  padding: var(--spacing-sm);
   will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  transition: filter var(--transition-speed) ease-in-out;
+  cursor: pointer;
 }
 
+.logo:hover {
+  filter: drop-shadow(0 0 var(--shadow-glow) var(--primary-color));
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 var(--shadow-glow) var(--react-color));
+}
+
+/* Animación de rotación */
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -27,16 +50,121 @@
   }
 }
 
+/* Aplicar animación solo si el usuario no prefiere movimiento reducido */
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
 }
 
+/* Tarjetas */
 .card {
-  padding: 2em;
+  padding: var(--spacing-md);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: background-color var(--transition-speed) ease;
 }
 
+.card:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Texto de documentación */
 .read-the-docs {
-  color: #888;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin-top: var(--spacing-md);
+  transition: color var(--transition-speed) ease;
+}
+
+.read-the-docs:hover {
+  color: var(--primary-color);
+}
+
+/* Botones mejorados */
+button {
+  transition: all var(--transition-speed) ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(100, 108, 255, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Enlaces mejorados */
+a {
+  text-decoration: none;
+  transition: opacity var(--transition-speed) ease;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* Responsividad mejorada */
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+  
+  .logo {
+    height: 4em;
+    padding: 1em;
+  }
+  
+  .card {
+    padding: 1.5em;
+  }
+}
+
+@media (max-width: 480px) {
+  #root {
+    padding: 0.5rem;
+  }
+  
+  .logo {
+    height: 3em;
+    padding: 0.75em;
+  }
+  
+  .card {
+    padding: 1em;
+  }
+}
+
+/* Modo de contraste alto */
+@media (prefers-contrast: high) {
+  .card {
+    border: 2px solid var(--primary-color);
+  }
+  
+  .logo:hover {
+    filter: drop-shadow(0 0 calc(var(--shadow-glow) * 1.5) var(--primary-color));
+  }
+}
+
+/* Tema oscuro mejorado */
+@media (prefers-color-scheme: dark) {
+  .card {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .read-the-docs {
+    color: #999;
+  }
+}
+
+/* Tema claro */
+@media (prefers-color-scheme: light) {
+  .card {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .read-the-docs {
+    color: #666;
+  }
 }
