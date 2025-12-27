@@ -61,9 +61,13 @@ router.get('/:id', async (req, res) => {
             ORDER BY c.name ASC
         `, [id]);
         
-        // Obtener secciones
+        // Obtener secciones CON dimensiones de imagen y posición (SIN updated_at)
         const sectionsResult = await client.query(
-            'SELECT * FROM chronicle_sections WHERE chronicle_id = $1 ORDER BY id ASC',
+            `SELECT id, chronicle_id, title, content, image_url, 
+                    image_width, image_height, position, created_at
+             FROM chronicle_sections 
+             WHERE chronicle_id = $1 
+             ORDER BY position ASC, id ASC`,
             [id]
         );
 
@@ -208,42 +212,81 @@ router.delete('/:id/roster/:charId', isAdmin, async (req, res) => {
     }
 });
 
-// ====== SECCIONES (CAPÍTULOS) ======
+// ====== SECCIONES (CAPÍTULOS) - CON REORDENAMIENTO ======
 
-// POST crear nueva sección (Solo Admin)
+// POST crear nueva sección CON posición automática (Solo Admin)
 router.post('/:id/sections', isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    
     try {
+        await client.query('BEGIN');
+        
         const { id } = req.params;
-        const { title, content, image_url } = req.body;
+        const { title, content, image_url, image_width, image_height } = req.body;
         
         // Validaciones
         if (!id || isNaN(id)) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: 'ID de crónica inválido' });
         }
         
         if (!title || title.trim() === '') {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: 'El título de la sección es obligatorio' });
         }
 
-        const result = await pool.query(
-            'INSERT INTO chronicle_sections (chronicle_id, title, content, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
-            [id, title.trim(), content || '', image_url || null]
+        // Verificar que la crónica existe
+        const chronicleCheck = await client.query(
+            'SELECT id FROM chronicles WHERE id = $1',
+            [id]
         );
+        
+        if (chronicleCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Crónica no encontrada' });
+        }
+
+        // Obtener la última posición
+        const positionResult = await client.query(
+            'SELECT COALESCE(MAX(position), 0) as max_position FROM chronicle_sections WHERE chronicle_id = $1',
+            [id]
+        );
+        const nextPosition = positionResult.rows[0].max_position + 1;
+
+        const result = await client.query(
+            `INSERT INTO chronicle_sections 
+             (chronicle_id, title, content, image_url, image_width, image_height, position) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+            [
+                id, 
+                title.trim(), 
+                content || '', 
+                image_url || null,
+                image_width || '100%',
+                image_height || 'auto',
+                nextPosition
+            ]
+        );
+        
+        await client.query('COMMIT');
         
         return res.status(201).json({
             success: true,
             section: result.rows[0]
         });
     } catch (err) {
+        await client.query('ROLLBACK');
         return handleDbError(res, err, 'Error al crear sección');
+    } finally {
+        client.release();
     }
 });
 
-// PUT actualizar sección (Solo Admin)
+// PUT actualizar sección CON dimensiones (Solo Admin)
 router.put('/sections/:id', isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, content, image_url } = req.body;
+        const { title, content, image_url, image_width, image_height } = req.body;
         
         // Validaciones
         if (!id || isNaN(id)) {
@@ -255,8 +298,18 @@ router.put('/sections/:id', isAdmin, async (req, res) => {
         }
 
         const result = await pool.query(
-            'UPDATE chronicle_sections SET title = $1, content = $2, image_url = $3 WHERE id = $4 RETURNING *',
-            [title.trim(), content || '', image_url || null, id]
+            `UPDATE chronicle_sections 
+             SET title = $1, content = $2, image_url = $3, 
+                 image_width = $4, image_height = $5 
+             WHERE id = $6 RETURNING *`,
+            [
+                title.trim(), 
+                content || '', 
+                image_url || null,
+                image_width || '100%',
+                image_height || 'auto',
+                id
+            ]
         );
         
         if (result.rows.length === 0) {
@@ -272,27 +325,241 @@ router.put('/sections/:id', isAdmin, async (req, res) => {
     }
 });
 
-// DELETE eliminar sección (Solo Admin)
-router.delete('/sections/:id', isAdmin, async (req, res) => {
+// PUT reordenar secciones (Solo Admin)
+router.put('/:id/sections/reorder', isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    
     try {
+        await client.query('BEGIN');
+        
+        const { id } = req.params;
+        const { sections } = req.body; // Array de { id, position }
+        
+        if (!id || isNaN(id)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'ID de crónica inválido' });
+        }
+        
+        if (!Array.isArray(sections) || sections.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Se requiere un array de secciones' });
+        }
+
+        // Actualizar posición de cada sección
+        for (const section of sections) {
+            await client.query(
+                'UPDATE chronicle_sections SET position = $1 WHERE id = $2 AND chronicle_id = $3',
+                [section.position, section.id, id]
+            );
+        }
+        
+        await client.query('COMMIT');
+        
+        return res.json({
+            success: true,
+            message: 'Secciones reordenadas exitosamente'
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        return handleDbError(res, err, 'Error al reordenar secciones');
+    } finally {
+        client.release();
+    }
+});
+
+// PUT mover sección arriba (Solo Admin)
+router.put('/sections/:id/move-up', isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
         const { id } = req.params;
         
         if (!id || isNaN(id)) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: 'ID de sección inválido' });
         }
 
-        const result = await pool.query(
-            'DELETE FROM chronicle_sections WHERE id = $1 RETURNING id',
+        // Obtener la sección actual
+        const currentSection = await client.query(
+            'SELECT * FROM chronicle_sections WHERE id = $1',
             [id]
         );
         
-        if (result.rows.length === 0) {
+        if (currentSection.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Sección no encontrada' });
         }
 
+        const current = currentSection.rows[0];
+        
+        // Obtener la sección anterior
+        const previousSection = await client.query(
+            `SELECT * FROM chronicle_sections 
+             WHERE chronicle_id = $1 AND position < $2 
+             ORDER BY position DESC LIMIT 1`,
+            [current.chronicle_id, current.position]
+        );
+        
+        if (previousSection.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'La sección ya está en la primera posición' });
+        }
+
+        const previous = previousSection.rows[0];
+        
+        // Intercambiar posiciones
+        await client.query(
+            'UPDATE chronicle_sections SET position = $1 WHERE id = $2',
+            [previous.position, current.id]
+        );
+        
+        await client.query(
+            'UPDATE chronicle_sections SET position = $1 WHERE id = $2',
+            [current.position, previous.id]
+        );
+        
+        await client.query('COMMIT');
+        
+        return res.json({
+            success: true,
+            message: 'Sección movida hacia arriba'
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        return handleDbError(res, err, 'Error al mover sección');
+    } finally {
+        client.release();
+    }
+});
+
+// PUT mover sección abajo (Solo Admin)
+router.put('/sections/:id/move-down', isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        const { id } = req.params;
+        
+        if (!id || isNaN(id)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'ID de sección inválido' });
+        }
+
+        // Obtener la sección actual
+        const currentSection = await client.query(
+            'SELECT * FROM chronicle_sections WHERE id = $1',
+            [id]
+        );
+        
+        if (currentSection.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Sección no encontrada' });
+        }
+
+        const current = currentSection.rows[0];
+        
+        // Obtener la sección siguiente
+        const nextSection = await client.query(
+            `SELECT * FROM chronicle_sections 
+             WHERE chronicle_id = $1 AND position > $2 
+             ORDER BY position ASC LIMIT 1`,
+            [current.chronicle_id, current.position]
+        );
+        
+        if (nextSection.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'La sección ya está en la última posición' });
+        }
+
+        const next = nextSection.rows[0];
+        
+        // Intercambiar posiciones
+        await client.query(
+            'UPDATE chronicle_sections SET position = $1 WHERE id = $2',
+            [next.position, current.id]
+        );
+        
+        await client.query(
+            'UPDATE chronicle_sections SET position = $1 WHERE id = $2',
+            [current.position, next.id]
+        );
+        
+        await client.query('COMMIT');
+        
+        return res.json({
+            success: true,
+            message: 'Sección movida hacia abajo'
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        return handleDbError(res, err, 'Error al mover sección');
+    } finally {
+        client.release();
+    }
+});
+
+// DELETE eliminar sección (Solo Admin)
+router.delete('/sections/:id', isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        const { id } = req.params;
+        
+        if (!id || isNaN(id)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'ID de sección inválido' });
+        }
+
+        // Obtener información de la sección antes de eliminarla
+        const sectionInfo = await client.query(
+            'SELECT chronicle_id, position FROM chronicle_sections WHERE id = $1',
+            [id]
+        );
+        
+        if (sectionInfo.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Sección no encontrada' });
+        }
+
+        const { chronicle_id, position } = sectionInfo.rows[0];
+
+        // Eliminar la sección
+        await client.query(
+            'DELETE FROM chronicle_sections WHERE id = $1',
+            [id]
+        );
+
+        // Reajustar las posiciones de las secciones posteriores
+        await client.query(
+            'UPDATE chronicle_sections SET position = position - 1 WHERE chronicle_id = $1 AND position > $2',
+            [chronicle_id, position]
+        );
+        
+        await client.query('COMMIT');
+
         return res.json({ success: true, message: 'Sección eliminada' });
     } catch (err) {
+        await client.query('ROLLBACK');
         return handleDbError(res, err, 'Error al eliminar sección');
+    } finally {
+        client.release();
+    }
+});
+
+// 🛠️ RUTA DE MIGRACIÓN (Ejecutar una vez)
+router.get('/update-db-schema-v2', async (req, res) => {
+    try {
+        await pool.query("ALTER TABLE chronicle_sections ADD COLUMN IF NOT EXISTS image_width VARCHAR(20) DEFAULT '100%'");
+        await pool.query("ALTER TABLE chronicle_sections ADD COLUMN IF NOT EXISTS image_height VARCHAR(20) DEFAULT 'auto'");
+        await pool.query("ALTER TABLE chronicle_sections ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0");
+        res.send("<h1>✅ Base de datos actualizada con éxito</h1>");
+    } catch (err) {
+        res.status(500).send(err.message);
     }
 });
 

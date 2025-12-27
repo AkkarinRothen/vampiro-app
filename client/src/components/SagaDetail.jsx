@@ -2,9 +2,11 @@
 // SagaDetail.jsx - Mejorado
 // ============================================
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { FaEdit, FaTrash, FaPlus, FaBold, FaItalic, FaHeading, FaUserPlus, FaTimes } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+// Como están en la misma carpeta 'components', usamos ./
+import ChronicleSection from './ChronicleSection';
+import SectionForm from './SectionForm';
 
 function SagaDetail({ user }) {
     const { id } = useParams();

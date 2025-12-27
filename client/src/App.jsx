@@ -9,7 +9,8 @@ import MaintenancePanel from "./components/MaintenancePanel";
 // --- CRÓNICAS (SAGAS) ---
 import SagaList from "./components/SagaList";
 import SagaDetail from "./components/SagaDetail";
-
+import ChronicleSection from './components/ChronicleSection';
+import SectionForm from './components/SectionForm';
 // --- PERSONAJES ---
 import Characters from "./pages/Characters";
 import CharacterDetail from "./components/CharacterDetail";
