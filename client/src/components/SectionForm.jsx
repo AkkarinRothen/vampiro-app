@@ -1,10 +1,5 @@
-
-// ============================================
-// SectionForm.jsx
-// Formulario para crear/editar secciones
-// ============================================
-
 import React, { useState, useEffect } from 'react';
+import { FaBold, FaItalic, FaHeading } from 'react-icons/fa';
 import ImageSizeControls from './ImageSizeControls';
 
 const SectionForm = ({ section, onSave, onCancel }) => {
@@ -15,9 +10,6 @@ const SectionForm = ({ section, onSave, onCancel }) => {
         image_width: '100%',
         image_height: 'auto'
     });
-
-    const [errors, setErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (section) {
@@ -31,180 +23,103 @@ const SectionForm = ({ section, onSave, onCancel }) => {
         }
     }, [section]);
 
-    const validateForm = () => {
-        const newErrors = {};
-        
-        if (!formData.title.trim()) {
-            newErrors.title = 'El título es obligatorio';
-        }
-        
-        if (formData.image_url && !isValidUrl(formData.image_url)) {
-            newErrors.image_url = 'URL de imagen inválida';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const isValidUrl = (url) => {
-        try {
-            new URL(url);
-            return true;
-        } catch {
-            return false;
-        }
-    };
-
-    const handleImageSizeChange = (width, height) => {
-        setFormData(prev => ({
-            ...prev,
-            image_width: width,
-            image_height: height
-        }));
-    };
-
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        
-        if (!validateForm()) {
-            return;
-        }
-
-        setIsSubmitting(true);
-        
-        try {
-            await onSave(formData);
-        } catch (error) {
-            console.error('Error al guardar:', error);
-            setErrors({ submit: 'Error al guardar la sección' });
-        } finally {
-            setIsSubmitting(false);
-        }
+        onSave(formData);
     };
 
-    const handleChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+    // Helper para insertar etiquetas (<b>, <i>, etc)
+    const insertTag = (tagStart, tagEnd) => {
+        const textarea = document.getElementById('section-content-area');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = formData.content;
+        const before = text.substring(0, start);
+        const selected = text.substring(start, end);
+        const after = text.substring(end);
         
-        // Limpiar error del campo cuando se modifica
-        if (errors[field]) {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[field];
-                return newErrors;
-            });
-        }
+        const newText = before + tagStart + selected + tagEnd + after;
+        setFormData({ ...formData, content: newText });
+        
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + tagStart.length, start + tagStart.length + selected.length);
+        }, 0);
     };
 
     return (
-        <form onSubmit={handleSubmit} className="section-form">
-            <div className="form-header">
-                <h3>{section ? '✏️ Editar Sección' : '➕ Nueva Sección'}</h3>
-            </div>
-            
-            {/* Título */}
-            <div className="form-group">
-                <label htmlFor="title">
-                    Título <span className="required">*</span>
-                </label>
-                <input
-                    id="title"
-                    type="text"
-                    placeholder="Título de la sección"
+        <div className="bg-neutral-900 p-6 rounded-lg border border-neutral-800 shadow-2xl animate-fade-in">
+            <h3 className="text-xl font-serif text-red-500 mb-6 border-b border-neutral-800 pb-2">
+                {section ? 'Editar Capítulo' : 'Nuevo Capítulo'}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Título */}
+                <input 
+                    type="text" 
+                    placeholder="Título del Capítulo" 
+                    className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded text-neutral-200 focus:border-red-900 outline-none text-lg"
                     value={formData.title}
-                    onChange={(e) => handleChange('title', e.target.value)}
-                    className={errors.title ? 'error' : ''}
+                    onChange={e => setFormData({...formData, title: e.target.value})}
+                    required
                 />
-                {errors.title && <span className="error-message">{errors.title}</span>}
-            </div>
-            
-            {/* Contenido */}
-            <div className="form-group">
-                <label htmlFor="content">Contenido</label>
-                <textarea
-                    id="content"
-                    placeholder="Escribe el contenido de la sección..."
-                    value={formData.content}
-                    onChange={(e) => handleChange('content', e.target.value)}
-                    rows={8}
-                />
-            </div>
-            
-            {/* URL de Imagen */}
-            <div className="form-group">
-                <label htmlFor="image_url">URL de Imagen</label>
-                <input
-                    id="image_url"
-                    type="text"
-                    placeholder="https://ejemplo.com/imagen.jpg"
-                    value={formData.image_url}
-                    onChange={(e) => handleChange('image_url', e.target.value)}
-                    className={errors.image_url ? 'error' : ''}
-                />
-                {errors.image_url && <span className="error-message">{errors.image_url}</span>}
-            </div>
-
-            {/* Controles de tamaño de imagen */}
-            {formData.image_url && (
-                <ImageSizeControls
-                    imageWidth={formData.image_width}
-                    imageHeight={formData.image_height}
-                    onChange={handleImageSizeChange}
-                />
-            )}
-
-            {/* Vista previa de la imagen */}
-            {formData.image_url && isValidUrl(formData.image_url) && (
-                <div className="image-preview">
-                    <h4>Vista Previa:</h4>
-                    <div className="preview-container">
-                        <img
-                            src={formData.image_url}
-                            alt="Preview"
-                            style={{
-                                width: formData.image_width,
-                                height: formData.image_height,
-                                objectFit: 'contain'
-                            }}
-                            onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'block';
-                            }}
-                        />
-                        <div className="preview-error" style={{ display: 'none' }}>
-                            ⚠️ No se pudo cargar la imagen
-                        </div>
-                    </div>
+                
+                {/* Barra de herramientas */}
+                <div className="flex gap-1 bg-neutral-950 p-2 rounded-t border-x border-t border-neutral-800">
+                    <button type="button" onClick={() => insertTag('<b>', '</b>')} className="p-2 hover:bg-neutral-800 rounded text-neutral-400" title="Negrita"><FaBold /></button>
+                    <button type="button" onClick={() => insertTag('<i>', '</i>')} className="p-2 hover:bg-neutral-800 rounded text-neutral-400" title="Cursiva"><FaItalic /></button>
+                    <button type="button" onClick={() => insertTag('<h3>', '</h3>')} className="p-2 hover:bg-neutral-800 rounded text-neutral-400" title="Subtítulo"><FaHeading /></button>
                 </div>
-            )}
+                
+                {/* Área de texto */}
+                <textarea 
+                    id="section-content-area"
+                    placeholder="Relata los hechos..." 
+                    className="w-full bg-neutral-950 border border-neutral-800 p-4 rounded-b min-h-[250px] text-neutral-300 focus:border-red-900 outline-none font-sans leading-relaxed"
+                    value={formData.content}
+                    onChange={e => setFormData({...formData, content: e.target.value})}
+                    required
+                />
 
-            {/* Error de envío */}
-            {errors.submit && (
-                <div className="error-message submit-error">{errors.submit}</div>
-            )}
+                {/* URL Imagen */}
+                <div className="bg-neutral-950 p-4 rounded border border-neutral-800">
+                    <input 
+                        type="url"
+                        placeholder="URL de Imagen (Opcional)" 
+                        className="w-full bg-neutral-900 border border-neutral-700 p-3 rounded text-sm text-neutral-400 focus:border-red-900 outline-none mb-4"
+                        value={formData.image_url}
+                        onChange={e => setFormData({...formData, image_url: e.target.value})}
+                    />
 
-            {/* Botones */}
-            <div className="form-actions">
-                <button 
-                    type="submit" 
-                    className="btn-primary"
-                    disabled={isSubmitting}
-                >
-                    {isSubmitting ? '⏳ Guardando...' : '💾 Guardar Sección'}
-                </button>
-                {onCancel && (
+                    {/* CONTROL DE TAMAÑO DE IMAGEN */}
+                    {formData.image_url && (
+                        <ImageSizeControls 
+                            width={formData.image_width}
+                            height={formData.image_height}
+                            onChange={(w, h) => setFormData(prev => ({ ...prev, image_width: w, image_height: h }))}
+                        />
+                    )}
+                </div>
+
+                {/* Botones */}
+                <div className="flex justify-end gap-3 pt-4">
                     <button 
                         type="button" 
                         onClick={onCancel}
-                        className="btn-secondary"
-                        disabled={isSubmitting}
+                        className="px-5 py-2 text-neutral-500 hover:text-white transition-colors"
                     >
-                        ❌ Cancelar
+                        Cancelar
                     </button>
-                )}
-            </div>
-        </form>
+                    <button 
+                        type="submit" 
+                        className="px-6 py-2 bg-red-900 hover:bg-red-800 text-white rounded shadow-lg transition-all"
+                    >
+                        {section ? 'Guardar Cambios' : 'Publicar'}
+                    </button>
+                </div>
+            </form>
+        </div>
     );
 };
 
 export default SectionForm;
-
