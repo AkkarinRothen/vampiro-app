@@ -1,5 +1,6 @@
 import React from 'react';
-import ReactMarkdown from 'react-markdown'; // Importamos el procesador de Markdown
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw'; // <--- IMPORTANTE: El plugin para leer HTML/Colores
 import Icons from '../ui/Icons'; 
 
 const ChronicleSection = ({ 
@@ -13,8 +14,32 @@ const ChronicleSection = ({
     onMoveDown 
 }) => {
     
-    // Configuración de Estilos para el Markdown (Tema Vampiro V5)
-    // Esto mapea etiquetas estándar (h1, p, ul) a tus clases de Tailwind
+    // Validación de seguridad: si no hay datos, no renderizamos nada
+    if (!section) return null;
+
+    // --- PROCESADOR DE SINTAXIS PERSONALIZADA (Obsidian Style) ---
+    // Esta lógica debe ser IDÉNTICA a la de SectionForm.jsx para coherencia visual
+    const processCustomSyntax = (text) => {
+        if (!text) return '';
+        return text
+            // 1. Resaltado ==texto==
+            .replace(/==([^=]+)==/g, '<mark class="bg-yellow-600/30 text-yellow-100 px-1 rounded shadow-sm border border-yellow-600/40">$1</mark>')
+            
+            // 2. Notas Flotantes ^[texto]
+            .replace(/\^\[([^\]]+)\]/g, (match, noteContent) => {
+                return `
+                    <span class="relative group cursor-help inline-block text-red-400 border-b border-dashed border-red-500/50 align-baseline mx-1">
+                        <sup class="font-bold text-[10px] ml-0.5">?</sup>
+                        <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-neutral-900 border border-neutral-700 rounded shadow-2xl text-neutral-300 text-sm font-sans leading-tight opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 backdrop-blur-md">
+                            ${noteContent}
+                            <span class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-neutral-900"></span>
+                        </span>
+                    </span>
+                `;
+            });
+    };
+
+    // Configuración de Estilos Markdown (Tema Vampiro V5)
     const markdownComponents = {
         // Párrafos
         p: ({node, ...props}) => <p className="mb-4 leading-relaxed text-neutral-300" {...props} />,
@@ -42,7 +67,12 @@ const ChronicleSection = ({
         hr: ({node, ...props}) => <hr className="border-red-900/30 my-8" {...props} />,
         
         // Enlaces
-        a: ({node, ...props}) => <a className="text-red-400 hover:text-red-300 underline underline-offset-2 transition-colors" {...props} target="_blank" rel="noopener noreferrer" />
+        a: ({node, ...props}) => <a className="text-red-400 hover:text-red-300 underline underline-offset-2 transition-colors" {...props} target="_blank" rel="noopener noreferrer" />,
+
+        // IMPORTANTE: Permitir etiquetas span, mark y sup para los colores y sintaxis custom
+        span: ({node, ...props}) => <span {...props} />,
+        mark: ({node, ...props}) => <mark {...props} />,
+        sup: ({node, ...props}) => <sup {...props} />
     };
 
     return (
@@ -51,7 +81,6 @@ const ChronicleSection = ({
             {/* --- CONTROLES DE ADMINISTRADOR (Flotantes) --- */}
             {isAdmin && (
                 <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/80 p-1.5 rounded-lg backdrop-blur-md border border-neutral-800 shadow-xl z-10">
-                    {/* Grupo: Reordenar */}
                     <div className="flex flex-col gap-1 border-r border-neutral-700 pr-2 mr-2 justify-center">
                         <button 
                             onClick={() => !isFirst && onMoveUp(section.id)} 
@@ -71,7 +100,6 @@ const ChronicleSection = ({
                         </button>
                     </div>
 
-                    {/* Grupo: Acciones */}
                     <div className="flex items-center gap-1">
                         <button 
                             onClick={() => onEdit(section)}
@@ -97,7 +125,7 @@ const ChronicleSection = ({
                 {section.title}
             </h2>
             
-            {/* --- IMAGEN CON TAMAÑO PERSONALIZADO --- */}
+            {/* --- IMAGEN --- */}
             {section.image_url && (
                 <div className="mb-8 flex justify-center w-full">
                     <div className="relative rounded-lg overflow-hidden border border-neutral-800 shadow-lg bg-black">
@@ -112,17 +140,20 @@ const ChronicleSection = ({
                             }}
                             className="block"
                             loading="lazy"
+                            onError={(e) => { e.target.style.display='none'; }} // Ocultar si falla la carga
                         />
-                         {/* Sombra interna para integrar la imagen */}
                         <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] pointer-events-none rounded-lg"></div>
                     </div>
                 </div>
             )}
             
-            {/* --- CONTENIDO MARKDOWN RENDERIZADO --- */}
+            {/* --- CONTENIDO MARKDOWN (Renderizado con HTML) --- */}
             <div className="font-sans text-lg text-justify selection:bg-red-900 selection:text-white">
-                <ReactMarkdown components={markdownComponents}>
-                    {section.content || ''}
+                <ReactMarkdown 
+                    rehypePlugins={[rehypeRaw]} // <--- ESTO ACTIVA LOS COLORES HTML
+                    components={markdownComponents}
+                >
+                    {processCustomSyntax(section.content || '')}
                 </ReactMarkdown>
             </div>
 

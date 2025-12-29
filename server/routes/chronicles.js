@@ -551,16 +551,133 @@ router.delete('/sections/:id', isAdmin, async (req, res) => {
     }
 });
 
-// 🛠️ RUTA DE MIGRACIÓN (Ejecutar una vez)
-router.get('/update-db-schema-v2', async (req, res) => {
+// ====== GLOSARIO (WIKI) ======
+
+router.get('/:id/glossary', async (req, res) => {
     try {
+        const { id } = req.params;
+        
+        if (!id || isNaN(id)) {
+            return res.status(400).json({ error: 'ID inválido' });
+        }
+
+        const result = await pool.query(
+            'SELECT term, definition FROM glossary_terms WHERE chronicle_id = $1 ORDER BY term ASC',
+            [id]
+        );
+        
+        const glossaryObj = {};
+        result.rows.forEach(row => {
+            glossaryObj[row.term] = row.definition;
+        });
+        
+        res.json(glossaryObj);
+    } catch (err) {
+        handleDbError(res, err, 'Error obteniendo glosario');
+    }
+});
+
+
+// 🛠️ RUTA DE MIGRACIÓN (Ejecutar una vez para actualizar la DB)
+router.get('/update-db-schema-full', async (req, res) => {
+    try {
+        // 1. Agregar columnas a chronicle_sections si no existen
         await pool.query("ALTER TABLE chronicle_sections ADD COLUMN IF NOT EXISTS image_width VARCHAR(20) DEFAULT '100%'");
         await pool.query("ALTER TABLE chronicle_sections ADD COLUMN IF NOT EXISTS image_height VARCHAR(20) DEFAULT 'auto'");
         await pool.query("ALTER TABLE chronicle_sections ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0");
-        res.send("<h1>✅ Base de datos actualizada con éxito</h1>");
+        
+        // 2. Crear tabla de glosario si no existe
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS glossary_terms (
+                id SERIAL PRIMARY KEY,
+                chronicle_id INTEGER REFERENCES chronicles(id) ON DELETE CASCADE,
+                term VARCHAR(100) NOT NULL,
+                definition TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(chronicle_id, term)
+            );
+        `);
+
+        res.send("<h1>✅ Base de datos actualizada (Schema V2 + Glosario)</h1>");
     } catch (err) {
-        res.status(500).send(err.message);
+        res.status(500).send("Error en migración: " + err.message);
     }
 });
+
+// ====== GLOSARIO (WIKI) - VERSIÓN CORREGIDA PARA SOPORTE GLOBAL ======
+
+// GET: Obtener términos locales + globales
+router.get('/:id/glossary', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // 1. Buscamos términos de ESTA crónica (chronicle_id = id)
+        // 2. O términos globales (chronicle_id IS NULL)
+        const result = await pool.query(`
+            SELECT term, definition, chronicle_id 
+            FROM glossary_terms 
+            WHERE chronicle_id = $1 OR chronicle_id IS NULL
+            ORDER BY term ASC
+        `, [id]);
+        
+        const glossaryObj = {};
+        result.rows.forEach(row => {
+            // Si hay duplicados (ej: local sobrescribe global), el último procesado gana.
+            // PostgreSQL no garantiza orden entre ORs sin ORDER BY específico, pero para un objeto simple esto funciona.
+            glossaryObj[row.term] = row.definition;
+        });
+        
+        res.json(glossaryObj);
+    } catch (err) {
+        handleDbError(res, err, 'Error obteniendo glosario');
+    }
+});
+
+// POST: Crear o Actualizar término (Maneja Globales y Locales correctamente)
+router.post('/:id/glossary', isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { id } = req.params;
+        const { term, definition, isGlobal } = req.body; // <--- Recuperamos isGlobal
+
+        if (!term || !definition) {
+            return res.status(400).json({ error: "Falta término o definición" });
+        }
+
+        // Definir si el destino es la crónica actual o NULL (Global)
+        const targetChronicleId = isGlobal ? null : id;
+
+        // Verificamos manualmente si existe para hacer UPDATE o INSERT.
+        // Esto es más robusto que ON CONFLICT cuando trabajamos con índices condicionales o NULLs.
+        const checkQuery = `
+            SELECT id FROM glossary_terms 
+            WHERE term = $1 
+            AND (chronicle_id = $2 OR (chronicle_id IS NULL AND $2 IS NULL))
+        `;
+        
+        const checkRes = await client.query(checkQuery, [term.trim(), targetChronicleId]);
+
+        if (checkRes.rows.length > 0) {
+            // ACTUALIZAR existente
+            await client.query(
+                `UPDATE glossary_terms SET definition = $1 WHERE id = $2`,
+                [definition, checkRes.rows[0].id]
+            );
+        } else {
+            // INSERTAR nuevo
+            await client.query(
+                `INSERT INTO glossary_terms (chronicle_id, term, definition) VALUES ($1, $2, $3)`,
+                [targetChronicleId, term.trim(), definition]
+            );
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        handleDbError(res, err, 'Error guardando término');
+    } finally {
+        client.release();
+    }
+});
+
 
 module.exports = router;
