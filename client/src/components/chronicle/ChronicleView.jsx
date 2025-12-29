@@ -6,7 +6,10 @@ import ChronicleSection from './ChronicleSection';
 
 const ChronicleView = ({ saga, initialSections, onBack }) => {
     const [sections, setSections] = useState(initialSections || []);
-    const [glossary, setGlossary] = useState({});
+    
+    // CAMBIO 1: El glosario ahora es una lista (Array), no un objeto
+    const [glossary, setGlossary] = useState([]); 
+    
     const [isEditing, setIsEditing] = useState(false);
     const [activeSection, setActiveSection] = useState(null);
     const [showGlossary, setShowGlossary] = useState(false);
@@ -21,14 +24,15 @@ const ChronicleView = ({ saga, initialSections, onBack }) => {
             const res = await fetch(`/api/chronicles/${saga.id}/glossary`, { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
-                setGlossary(data);
+                // El backend ahora devuelve un array: [{ id, term, definition, chronicle_id }, ...]
+                setGlossary(data); 
             }
         } catch (err) {
             console.error("Error cargando glosario:", err);
         }
     };
 
-      // Actualiza esta función:
+    // CAMBIO 2: Guardar y recargar la lista
     const handleSaveGlossaryTerm = async (term, definition, isGlobal) => { 
         try {
             const res = await fetch(`/api/chronicles/${saga.id}/glossary`, {
@@ -39,18 +43,33 @@ const ChronicleView = ({ saga, initialSections, onBack }) => {
             });
 
             if (res.ok) {
-                setGlossary(prev => ({ ...prev, [term]: definition }));
-                // Opcional: Descomenta la siguiente línea si quieres cerrar el modal al guardar con éxito
-                // setShowGlossary(false); 
+                // Recargamos del servidor para obtener el ID y el orden correcto
+                await fetchGlossary();
             } else {
-                // Capturar y mostrar el error real del backend
                 const errorData = await res.json().catch(() => ({}));
-                console.error("Error del servidor:", errorData);
-                alert(`No se pudo guardar: ${errorData.error || res.statusText || 'Error desconocido'}`);
+                alert(`No se pudo guardar: ${errorData.error || 'Error desconocido'}`);
             }
         } catch (err) {
             console.error("Error de red:", err);
-            alert("Error de conexión al guardar definición. Revisa tu servidor.");
+            alert("Error de conexión al guardar definición.");
+        }
+    };
+
+    // CAMBIO 3: Función para borrar términos
+    const handleDeleteGlossaryTerm = async (termId) => {
+        try {
+            const res = await fetch(`/api/chronicles/${saga.id}/glossary/${termId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (res.ok) {
+                await fetchGlossary(); // Recargar lista
+            } else {
+                alert("No se pudo eliminar la nota.");
+            }
+        } catch (err) {
+            console.error("Error al borrar:", err);
         }
     };
 
@@ -141,7 +160,11 @@ const ChronicleView = ({ saga, initialSections, onBack }) => {
                     <div className="flex items-center gap-2 text-neutral-500 text-sm">
                         <span>Administrador de Crónica</span>
                         <span className="text-neutral-700">•</span>
-                        <button onClick={() => setShowGlossary(true)} className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 transition-colors"><Icons.StickyNote /> Gestionar Glosario ({Object.keys(glossary).length})</button>
+                        <button onClick={() => setShowGlossary(true)} className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 transition-colors">
+                            <Icons.StickyNote /> 
+                            {/* CAMBIO 4: Usamos .length directo porque ahora es un array */}
+                            Gestionar Glosario ({glossary.length})
+                        </button>
                     </div>
                 </div>
                 {!isEditing && <button onClick={() => { setActiveSection(null); setIsEditing(true); }} className="bg-red-900 hover:bg-red-800 text-white px-4 py-2 rounded flex items-center gap-2 shadow-lg transition-transform hover:scale-105"><Icons.Plus /> Nuevo Capítulo</button>}
@@ -153,12 +176,31 @@ const ChronicleView = ({ saga, initialSections, onBack }) => {
                     <div className="space-y-6 pb-20">
                         {sections.length === 0 && <div className="text-center py-12 text-neutral-600 italic border border-dashed border-neutral-800 rounded-lg">La historia aún no ha sido escrita.<br/><span className="text-sm">Presiona "Nuevo Capítulo" para comenzar.</span></div>}
                         {sections.map((section, index) => (
-                            <ChronicleSection key={section.id} section={section} glossary={glossary} isAdmin={true} isFirst={index === 0} isLast={index === sections.length - 1} onEdit={(s) => { setActiveSection(s); setIsEditing(true); }} onDelete={handleDeleteSection} onMoveUp={(id) => moveSection(id, 'up')} onMoveDown={(id) => moveSection(id, 'down')} />
+                            <ChronicleSection 
+                                key={section.id} 
+                                section={section} 
+                                glossary={glossary} 
+                                isAdmin={true} 
+                                isFirst={index === 0} 
+                                isLast={index === sections.length - 1} 
+                                onEdit={(s) => { setActiveSection(s); setIsEditing(true); }} 
+                                onDelete={handleDeleteSection} 
+                                onMoveUp={(id) => moveSection(id, 'up')} 
+                                onMoveDown={(id) => moveSection(id, 'down')} 
+                            />
                         ))}
                     </div>
                 )}
             </div>
-            <GlossaryModal isOpen={showGlossary} onClose={() => setShowGlossary(false)} onSave={handleSaveGlossaryTerm} glossary={glossary} />
+            
+            {/* CAMBIO 5: Pasamos la nueva prop onDelete */}
+            <GlossaryModal 
+                isOpen={showGlossary} 
+                onClose={() => setShowGlossary(false)} 
+                onSave={handleSaveGlossaryTerm} 
+                onDelete={handleDeleteGlossaryTerm} // <--- ¡AQUÍ!
+                glossary={glossary} 
+            />
         </div>
     );
 };

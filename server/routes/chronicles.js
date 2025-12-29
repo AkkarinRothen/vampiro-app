@@ -43,6 +43,7 @@ router.put('/sections/:id/move-down', isAdmin, sectionCtrl.moveDown);      // Mo
 // ==========================================
 router.get('/:id/glossary', glossaryCtrl.getGlossary);
 router.post('/:id/glossary', isAdmin, glossaryCtrl.upsertTerm);
+router.delete('/:id/glossary/:termId', isAdmin, glossaryCtrl.deleteTerm);
 
 // ==========================================
 // MANTENIMIENTO
