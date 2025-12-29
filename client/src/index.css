@@ -2,9 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Opcional: Asegurarnos que el fondo sea negro por defecto */
+/* --- Estilos Globales --- */
 body {
-    background-color: #171717; /* neutral-900 */
+    /* Usamos un negro profundo (neutral-950) para mayor inmersión */
+    background-color: #0a0a0a; 
+    color: #e5e5e5;
     margin: 0;
     padding: 0;
+    /* Suavizado de fuentes para mejor lectura en fondo oscuro */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Utilidades Personalizadas --- */
+@layer utilities {
+  /* Animación de entrada suave */
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  /* Ocultar barra de desplazamiento (usado en ImageSizeControls) */
+  .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+  }
+  .scrollbar-hide {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+  }
+}
+
+/* --- Keyframes --- */
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
 }

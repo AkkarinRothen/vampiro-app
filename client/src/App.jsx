@@ -1,51 +1,113 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
+import CampaignManager from "./components/dashboard/CampaignManager";
 
-// --- COMPONENTES DE ESTRUCTURA ---
-import Navbar from "./components/Navbar";
-import Login from "./components/Login";
-import MaintenancePanel from "./components/MaintenancePanel";
+// --- COMPONENTES DE ESTRUCTURA Y UI ---
+// Asumiendo que moviste Navbar y Login a carpetas organizadas, si no, ajusta estas rutas
+import Navbar from "./components/ui/Navbar"; 
+import Login from "./components/auth/Login"; 
+import MaintenancePanel from "./components/admin/MaintenancePanel";
 
-// --- CRÓNICAS (SAGAS) ---
-import SagaList from "./components/SagaList";
-import SagaDetail from "./components/SagaDetail";
-import ChronicleSection from './components/ChronicleSection';
-import SectionForm from './components/SectionForm';
-// --- PERSONAJES ---
+// --- CRÓNICAS (SISTEMA NUEVO) ---
+import SagaList from "./components/dashboard/SagaList";
+import ChronicleView from "./components/chronicle/ChronicleView";
+
+// --- PERSONAJES Y LORE (MANTENIDOS) ---
 import Characters from "./pages/Characters";
 import CharacterDetail from "./components/CharacterDetail";
-
-// --- LORE Y EXTRAS ---
 import LoreView from "./components/LoreView";
 import GalleryView from "./components/GalleryView";
+
+// --- COMPONENTES UTILITARIOS ---
 
 // Componente de carga reutilizable
 const LoadingScreen = () => (
   <div className="min-h-screen bg-black flex flex-col items-center justify-center text-red-900 animate-pulse font-serif">
-    <span className="text-3xl">VTM 5E</span>
-    <span className="text-sm mt-2 tracking-widest uppercase">
+    <span className="text-3xl border-b-2 border-red-900 pb-2 mb-4">VTM 5E</span>
+    <span className="text-sm tracking-[0.3em] uppercase text-neutral-500">
       Despertando la Sangre...
     </span>
   </div>
 );
 
-// Componente de ruta protegida para Admin
+// --- WRAPPERS DE RUTAS ---
+
+// Ruta protegida para Admin
 const ProtectedAdminRoute = ({ user, children }) => {
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  if (user.role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
-  
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin') return <Navigate to="/" replace />;
   return children;
 };
 
-// Componente de ruta pública (redirige si ya está logueado)
+// Ruta pública (redirige si ya está logueado)
 const PublicRoute = ({ user, children }) => {
   return user ? <Navigate to="/" replace /> : children;
 };
+
+// [NUEVO] Wrapper para conectar la URL /chronicle/:id con el componente ChronicleView
+// [ACTUALIZADO] Wrapper que conecta con la API real
+const ChronicleRouteWrapper = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [sagaData, setSagaData] = useState(null); // Guardará { info, sections, characters }
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSaga = async () => {
+      try {
+        // Llamada a tu backend: GET /api/chronicles/:id
+        const response = await fetch(`/api/chronicles/${id}`, { credentials: 'include' });
+        
+        if (!response.ok) {
+           if (response.status === 404) {
+             console.error("Crónica no encontrada");
+             navigate('/'); 
+             return;
+           }
+           throw new Error('Error de red');
+        }
+
+        const data = await response.json();
+        // El backend devuelve: { info, characters, sections }
+        setSagaData(data); 
+
+      } catch (error) {
+        console.error("Error cargando crónica", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSaga();
+  }, [id, navigate]);
+
+  if (loading) return <LoadingScreen />;
+  if (!sagaData) return null;
+
+  return (
+    <ChronicleView 
+      saga={sagaData.info}       // Info general (título, imagen)
+      initialSections={sagaData.sections} // Secciones que vienen de la BD
+      onBack={() => navigate('/')} 
+    />
+  );
+};
+// [NUEVO] Wrapper para SagaList que inyecta la navegación
+const SagaListWrapper = ({ user }) => {
+  const navigate = useNavigate();
+  
+  // Extendemos el objeto usuario para incluir la función de navegación
+  // que SagaList espera en "user.onSelectSaga"
+  const userWithNavigation = {
+    ...user,
+    onSelectSaga: (saga) => navigate(`/chronicle/${saga.id}`)
+  };
+
+  return <SagaList user={userWithNavigation} />;
+};
+
+
+// --- APP PRINCIPAL ---
 
 function App() {
   const [user, setUser] = useState(null);
@@ -56,28 +118,20 @@ function App() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await fetch("/api/current_user", {
-          credentials: 'include'
-        });
+        // Simulación o llamada real a tu API
+        const response = await fetch("/api/current_user", { credentials: 'include' });
         
         if (!response.ok) {
-          console.warn('No hay sesión activa');
-          setLoading(false);
-          return;
+            // Fallback para desarrollo sin backend: descomentar para probar UI
+            // setUser({ id: '1', username: 'Narrador', role: 'admin' });
+            setLoading(false);
+            return;
         }
         
         const data = await response.json();
-        console.log('Respuesta de sesión:', data); // Debug
         
         if (data.success && data.user) {
-          setUser({
-            id: data.user.id,
-            username: data.user.username,
-            role: data.user.role
-          });
-          console.log('Usuario autenticado:', data.user.username, 'Rol:', data.user.role);
-        } else {
-          console.log('No hay sesión activa');
+          setUser(data.user);
         }
       } catch (err) {
         console.error('Error verificando sesión:', err);
@@ -90,42 +144,29 @@ function App() {
     checkSession();
   }, []);
 
-  // Función para cerrar sesión
   const handleLogout = async () => {
     try {
-      const response = await fetch("/api/logout", {
-        method: "POST",
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        setUser(null);
-        window.location.href = '/login'; // Redirigir al login
-      }
+      await fetch("/api/logout", { method: "POST", credentials: 'include' });
+      setUser(null);
+      window.location.href = '/login';
     } catch (err) {
-      console.error('Error al cerrar sesión:', err);
-      // Intentar de todas formas limpiar el estado local
       setUser(null);
       window.location.href = '/login';
     }
   };
 
-  // Pantalla de carga inicial
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
-  // Pantalla de error (opcional)
   if (error) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-red-600 font-serif">
-        <span className="text-2xl mb-4">Error de Conexión</span>
-        <span className="text-sm">{error}</span>
+        <span className="text-2xl mb-4">Fallo en la red de la Camarilla</span>
+        <span className="text-sm mb-4">{error}</span>
         <button 
           onClick={() => window.location.reload()} 
-          className="mt-4 px-4 py-2 bg-red-900 hover:bg-red-800 transition-colors rounded"
+          className="px-4 py-2 bg-red-900 hover:bg-red-800 text-white rounded"
         >
-          Reintentar
+          Reintentar conexión
         </button>
       </div>
     );
@@ -135,21 +176,22 @@ function App() {
     <BrowserRouter>
       <div className="min-h-screen bg-neutral-950 text-neutral-200 font-sans selection:bg-red-900 selection:text-white relative overflow-hidden">
         
-        {/* FONDO ANIMADO */}
+        {/* FONDO ANIMADO Y DECORACIÓN */}
         <div className="fixed inset-0 z-0 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-b from-neutral-950 via-neutral-900 to-black opacity-90"></div>
           <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-red-900/20 rounded-full blur-[120px] animate-pulse"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-red-900/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+          {/* Ruido de textura para efecto fílmico */}
           <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
         </div>
 
-        {/* CONTENIDO */}
+        {/* CONTENIDO PRINCIPAL */}
         <div className="relative z-10 flex flex-col min-h-screen">
           <Navbar user={user} onLogout={handleLogout} />
 
           <div className="container mx-auto px-4 py-8 flex-1">
             <Routes>
-              {/* Rutas públicas */}
+              {/* --- AUTENTICACIÓN --- */}
               <Route 
                 path="/login" 
                 element={
@@ -159,15 +201,21 @@ function App() {
                 } 
               />
 
-              {/* Rutas protegidas - requieren login */}
+              {/* --- GESTIÓN DE CRÓNICAS (Actualizado) --- */}
               <Route 
                 path="/" 
-                element={user ? <SagaList user={user} /> : <Navigate to="/login" replace />} 
+                element={
+                  user ? <SagaListWrapper user={user} /> : <Navigate to="/login" replace />
+                } 
               />
               <Route 
                 path="/chronicle/:id" 
-                element={user ? <SagaDetail user={user} /> : <Navigate to="/login" replace />} 
+                element={
+                  user ? <ChronicleRouteWrapper /> : <Navigate to="/login" replace />
+                } 
               />
+
+              {/* --- PERSONAJES (Mantenido) --- */}
               <Route 
                 path="/characters" 
                 element={user ? <Characters user={user} /> : <Navigate to="/login" replace />} 
@@ -176,6 +224,8 @@ function App() {
                 path="/character/:id" 
                 element={user ? <CharacterDetail user={user} /> : <Navigate to="/login" replace />} 
               />
+
+              {/* --- EXTRAS (Mantenido) --- */}
               <Route 
                 path="/lore" 
                 element={user ? <LoreView user={user} /> : <Navigate to="/login" replace />} 
@@ -185,7 +235,7 @@ function App() {
                 element={user ? <GalleryView user={user} /> : <Navigate to="/login" replace />} 
               />
 
-              {/* Ruta de admin - solo para administradores */}
+              {/* --- ADMIN --- */}
               <Route 
                 path="/admin" 
                 element={
@@ -195,7 +245,7 @@ function App() {
                 } 
               />
 
-              {/* Ruta por defecto */}
+              {/* Default */}
               <Route path="*" element={<Navigate to={user ? "/" : "/login"} replace />} />
             </Routes>
           </div>
