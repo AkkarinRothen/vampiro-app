@@ -32,7 +32,6 @@ const ChronicleView = ({ saga, initialSections, onBack }) => {
         }
     };
 
-    // CAMBIO 2: Guardar y recargar la lista
     const handleSaveGlossaryTerm = async (term, definition, isGlobal) => { 
         try {
             const res = await fetch(`/api/chronicles/${saga.id}/glossary`, {
