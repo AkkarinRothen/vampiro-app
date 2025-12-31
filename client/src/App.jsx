@@ -7,6 +7,7 @@ import CampaignManager from "./components/dashboard/CampaignManager";
 import Navbar from "./components/ui/Navbar"; 
 import Login from "./components/auth/Login"; 
 import MaintenancePanel from "./components/admin/MaintenancePanel";
+import PermissionsManager from "./components/admin/PermissionsManager";
 
 // --- CRÓNICAS (SISTEMA NUEVO) ---
 import SagaList from "./components/dashboard/SagaList";
@@ -235,16 +236,26 @@ function App() {
                 element={user ? <GalleryView user={user} /> : <Navigate to="/login" replace />} 
               />
 
-              {/* --- ADMIN --- */}
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedAdminRoute user={user}>
-                    <MaintenancePanel />
-                  </ProtectedAdminRoute>
-                } 
-              />
+             {/* --- ADMIN --- */}
+<Route 
+  path="/admin" 
+  element={
+    <ProtectedAdminRoute user={user}>
+      <MaintenancePanel user={user} />  {/* ✅ AGREGADO: user={user} */}
+    </ProtectedAdminRoute>
+  } 
+/>
 
+<Route 
+  path="/admin/permissions" 
+  element={
+    <ProtectedAdminRoute user={user}>
+      <div className="container mx-auto py-10">
+         <PermissionsManager />
+      </div>
+    </ProtectedAdminRoute>
+  } 
+/>
               {/* Default */}
               <Route path="*" element={<Navigate to={user ? "/" : "/login"} replace />} />
             </Routes>

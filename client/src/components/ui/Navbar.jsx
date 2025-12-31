@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { FaBookDead, FaUsers, FaScroll, FaSignOutAlt, FaGem, FaSkull } from "react-icons/fa";
+// Se importa FaTools para el icono del panel
+import { FaBookDead, FaUsers, FaScroll, FaSignOutAlt, FaGem, FaSkull, FaTools } from "react-icons/fa";
 
 function Navbar({ user }) {
     const navigate = useNavigate();
@@ -57,6 +58,13 @@ function Navbar({ user }) {
                             <Link to="/characters" className={getLinkClasses('/characters')}><FaUsers /> Personajes</Link>
                             <Link to="/gallery" className={getLinkClasses('/gallery')}><FaGem /> Galería</Link>
                             <Link to="/lore" className={getLinkClasses('/lore')}><FaScroll /> Archivos</Link>
+                            
+                            {/* BOTÓN ADMIN (Solo visible para admins) */}
+                            {user.role === 'admin' && (
+                                <Link to="/admin" className={getLinkClasses('/admin')}>
+                                    <FaTools /> Mantenimiento
+                                </Link>
+                            )}
                         </div>
 
                         {/* Perfil y Logout (Siempre visible arriba a la derecha) */}
@@ -105,6 +113,14 @@ function Navbar({ user }) {
                         <FaScroll size={20} className="mb-1" />
                         <span className="text-[10px] font-serif uppercase tracking-wider">Lore</span>
                     </Link>
+
+                    {/* BOTÓN ADMIN MÓVIL (Solo visible para admins) */}
+                    {user.role === 'admin' && (
+                        <Link to="/admin" className={getLinkClasses('/admin', true)}>
+                            <FaTools size={20} className="mb-1" />
+                            <span className="text-[10px] font-serif uppercase tracking-wider">Admin</span>
+                        </Link>
+                    )}
                 </div>
             )}
         </>

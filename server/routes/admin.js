@@ -6,6 +6,10 @@ const bcrypt = require('bcrypt');
 // ==========================================
 // MIDDLEWARE DE PROTECCIÓN
 // ==========================================
+
+/**
+ * Middleware: Verifica que el usuario esté autenticado y tenga rol de admin
+ */
 const isAdmin = (req, res, next) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ error: "No autenticado" });
@@ -16,7 +20,9 @@ const isAdmin = (req, res, next) => {
     next();
 };
 
-// Validación de clave secreta
+/**
+ * Middleware: Valida la clave secreta para operaciones críticas
+ */
 const validateSecretKey = (req, res, next) => {
     const secretKey = process.env.DB_RESET_KEY;
     if (!secretKey || req.query.key !== secretKey) {
@@ -24,6 +30,7 @@ const validateSecretKey = (req, res, next) => {
             <div style="font-family: serif; background: #1a0505; color: #e5e5e5; padding: 2rem; text-align: center;">
                 <h1 style="color: #ff3333;">⛔ Acceso Denegado</h1>
                 <p>Violación de la Mascarada detectada.</p>
+                <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 1rem;">Requiere clave secreta válida</p>
             </div>
         `);
     }
@@ -33,6 +40,12 @@ const validateSecretKey = (req, res, next) => {
 // ==========================================
 // 1. EXPORTAR DATOS (BACKUP)
 // ==========================================
+
+/**
+ * GET /api/export-data
+ * Exporta todos los datos de la base de datos en formato JSON
+ * @requires isAdmin
+ */
 router.get('/api/export-data', isAdmin, async (req, res) => {
     const client = await pool.connect();
     try {
@@ -55,7 +68,10 @@ router.get('/api/export-data', isAdmin, async (req, res) => {
         });
     } catch (err) {
         console.error("Error al exportar datos:", err);
-        res.status(500).json({ error: "Error al exportar datos", details: err.message });
+        res.status(500).json({ 
+            error: "Error al exportar datos", 
+            details: err.message 
+        });
     } finally {
         client.release();
     }
@@ -64,6 +80,12 @@ router.get('/api/export-data', isAdmin, async (req, res) => {
 // ==========================================
 // 2. IMPORTAR DATOS (RESTAURAR)
 // ==========================================
+
+/**
+ * POST /api/import-data
+ * Importa datos desde un backup JSON
+ * @requires isAdmin
+ */
 router.post('/api/import-data', isAdmin, async (req, res) => {
     const { characters, chronicles, sections, lore, chronicle_characters } = req.body;
     
@@ -76,7 +98,13 @@ router.post('/api/import-data', isAdmin, async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        let stats = { characters: 0, chronicles: 0, sections: 0, lore: 0, links: 0 };
+        let stats = { 
+            characters: 0, 
+            chronicles: 0, 
+            sections: 0, 
+            lore: 0, 
+            links: 0 
+        };
 
         // A. Importar Personajes
         if (Array.isArray(characters) && characters.length > 0) {
@@ -129,17 +157,19 @@ router.post('/api/import-data', isAdmin, async (req, res) => {
         // C. Importar Secciones
         if (Array.isArray(sections) && sections.length > 0) {
             const query = `
-                INSERT INTO chronicle_sections (id, chronicle_id, title, content, image_url) 
-                VALUES ($1, $2, $3, $4, $5) 
+                INSERT INTO chronicle_sections (id, chronicle_id, title, content, image_url, section_order) 
+                VALUES ($1, $2, $3, $4, $5, $6) 
                 ON CONFLICT (id) DO UPDATE SET 
                     title = EXCLUDED.title,
                     content = EXCLUDED.content,
-                    image_url = EXCLUDED.image_url
+                    image_url = EXCLUDED.image_url,
+                    section_order = EXCLUDED.section_order
             `;
             
             for (const sec of sections) {
                 await client.query(query, [
-                    sec.id, sec.chronicle_id, sec.title, sec.content, sec.image_url
+                    sec.id, sec.chronicle_id, sec.title, sec.content, 
+                    sec.image_url, sec.section_order || 0
                 ]);
                 stats.sections++;
             }
@@ -197,8 +227,145 @@ router.post('/api/import-data', isAdmin, async (req, res) => {
 });
 
 // ==========================================
-// 3. SETUP MASTER (INICIALIZACIÓN DE BD)
+// 3. GESTIÓN DE PERMISOS
 // ==========================================
+
+/**
+ * GET /api/permissions
+ * Obtiene todos los permisos configurados
+ * @requires isAdmin
+ */
+router.get('/api/permissions', isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM role_permissions ORDER BY role, permission');
+        res.json(result.rows);
+    } catch (err) {
+        // Si la tabla no existe, devolver array vacío para no romper el frontend
+        if (err.code === '42P01') {
+            return res.json([]);
+        }
+        console.error("Error obteniendo permisos:", err);
+        res.status(500).json({ 
+            error: "Error obteniendo permisos", 
+            details: err.message 
+        });
+    }
+});
+
+/**
+ * POST /api/permissions
+ * Actualiza o crea un permiso específico
+ * @requires isAdmin
+ */
+router.post('/api/permissions', isAdmin, async (req, res) => {
+    const { role, permission, is_allowed } = req.body;
+    
+    if (!role || !permission || typeof is_allowed !== 'boolean') {
+        return res.status(400).json({ 
+            error: "Parámetros inválidos", 
+            required: { role: "string", permission: "string", is_allowed: "boolean" }
+        });
+    }
+    
+    try {
+        await pool.query(
+            `INSERT INTO role_permissions (role, permission, is_allowed) 
+             VALUES ($1, $2, $3)
+             ON CONFLICT (role, permission) 
+             DO UPDATE SET is_allowed = $3`,
+            [role, permission, is_allowed]
+        );
+        res.json({ 
+            success: true,
+            message: `Permiso actualizado: ${role}.${permission} = ${is_allowed}`
+        });
+    } catch (err) {
+        console.error("Error guardando permiso:", err);
+        res.status(500).json({ 
+            error: "Error guardando permiso", 
+            details: err.message 
+        });
+    }
+});
+
+/**
+ * POST /api/permissions/init
+ * Inicializa la tabla de permisos con valores por defecto
+ * @requires isAdmin
+ */
+router.post('/api/permissions/init', isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        // Crear tabla si no existe
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS role_permissions (
+                role VARCHAR(50) NOT NULL,
+                permission VARCHAR(100) NOT NULL,
+                is_allowed BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (role, permission)
+            );
+        `);
+        
+        // Crear índice para búsquedas rápidas
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_role_permissions_role 
+            ON role_permissions(role);
+        `);
+        
+        // Valores por defecto
+        const defaults = [
+            { role: 'admin', permission: 'manage_users', allowed: true },
+            { role: 'admin', permission: 'edit_chronicles', allowed: true },
+            { role: 'admin', permission: 'delete_characters', allowed: true },
+            { role: 'admin', permission: 'manage_lore', allowed: true },
+            { role: 'admin', permission: 'export_data', allowed: true },
+            { role: 'player', permission: 'edit_chronicles', allowed: false },
+            { role: 'player', permission: 'delete_characters', allowed: false },
+            { role: 'player', permission: 'view_chronicles', allowed: true },
+            { role: 'player', permission: 'view_characters', allowed: true }
+        ];
+        
+        for (const d of defaults) {
+            await client.query(
+                `INSERT INTO role_permissions (role, permission, is_allowed) 
+                 VALUES ($1, $2, $3) 
+                 ON CONFLICT (role, permission) DO NOTHING`,
+                [d.role, d.permission, d.allowed]
+            );
+        }
+        
+        await client.query('COMMIT');
+        
+        res.json({ 
+            success: true, 
+            message: "Sistema de permisos inicializado correctamente",
+            defaults_created: defaults.length
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Error inicializando permisos:", err);
+        res.status(500).json({ 
+            error: "Error inicializando permisos", 
+            details: err.message 
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// ==========================================
+// 4. SETUP MASTER (INICIALIZACIÓN COMPLETA)
+// ==========================================
+
+/**
+ * GET /setup-master
+ * Inicializa todas las tablas de la base de datos
+ * @requires validateSecretKey
+ */
 router.get('/setup-master', validateSecretKey, async (req, res) => {
     const client = await pool.connect();
     
@@ -240,7 +407,6 @@ router.get('/setup-master', validateSecretKey, async (req, res) => {
             )
         `);
 
-        // Crear índice para búsquedas rápidas
         await client.query('CREATE INDEX idx_users_username ON users(username)');
         await client.query('CREATE INDEX idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL');
 
@@ -317,6 +483,7 @@ router.get('/setup-master', validateSecretKey, async (req, res) => {
         `);
 
         await client.query('CREATE INDEX idx_sections_chronicle ON chronicle_sections(chronicle_id)');
+        await client.query('CREATE INDEX idx_sections_order ON chronicle_sections(chronicle_id, section_order)');
 
         // 7. Tabla de LORE
         await client.query('DROP TABLE IF EXISTS lore CASCADE');
@@ -333,6 +500,37 @@ router.get('/setup-master', validateSecretKey, async (req, res) => {
         await client.query('CREATE INDEX idx_lore_category ON lore(category)');
         await client.query('CREATE INDEX idx_lore_title ON lore(title)');
 
+        // 8. Tabla de PERMISOS
+        await client.query('DROP TABLE IF EXISTS role_permissions CASCADE');
+        await client.query(`
+            CREATE TABLE role_permissions (
+                role VARCHAR(50) NOT NULL,
+                permission VARCHAR(100) NOT NULL,
+                is_allowed BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (role, permission)
+            )
+        `);
+
+        await client.query('CREATE INDEX idx_role_permissions_role ON role_permissions(role)');
+
+        // Permisos por defecto
+        const defaultPermissions = [
+            ['admin', 'manage_users', true],
+            ['admin', 'edit_chronicles', true],
+            ['admin', 'delete_characters', true],
+            ['admin', 'manage_lore', true],
+            ['player', 'edit_chronicles', false],
+            ['player', 'view_chronicles', true]
+        ];
+
+        for (const [role, permission, allowed] of defaultPermissions) {
+            await client.query(
+                'INSERT INTO role_permissions (role, permission, is_allowed) VALUES ($1, $2, $3)',
+                [role, permission, allowed]
+            );
+        }
+
         await client.query('COMMIT');
 
         res.send(`
@@ -340,7 +538,7 @@ router.get('/setup-master', validateSecretKey, async (req, res) => {
                 <h1 style="color: #ff3333; font-size: 3rem; margin-bottom: 1rem; text-shadow: 0 0 20px rgba(255,51,51,0.5);">🦇 Dominio Restablecido</h1>
                 <p style="font-size: 1.2rem; margin-bottom: 2rem;">La sangre de Neón fluye nuevamente por las venas del sistema.</p>
                 <div style="background: rgba(0,0,0,0.5); border: 2px solid #ff3333; border-radius: 10px; padding: 2rem; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #ff6666; margin-bottom: 1rem;">Estructuras Creadas</h2>
+                    <h2 style="color: #ff6666; margin-bottom: 1rem;">✅ Estructuras Creadas</h2>
                     <ul style="list-style: none; padding: 0; text-align: left; line-height: 2;">
                         <li>✅ Sistema de Sesiones</li>
                         <li>✅ Usuarios (Admin: <strong>narrador</strong>)</li>
@@ -348,6 +546,7 @@ router.get('/setup-master', validateSecretKey, async (req, res) => {
                         <li>✅ Crónicas y Secciones</li>
                         <li>✅ Vínculos Personaje-Crónica</li>
                         <li>✅ Archivos de Lore</li>
+                        <li>✅ Sistema de Permisos</li>
                         <li>✅ Índices de Optimización</li>
                     </ul>
                 </div>
@@ -361,7 +560,7 @@ router.get('/setup-master', validateSecretKey, async (req, res) => {
         res.status(500).send(`
             <div style="font-family: serif; background: #1a0505; color: #ff6666; padding: 2rem; text-align: center;">
                 <h1>💀 Error Crítico en el Ritual</h1>
-                <pre style="background: black; padding: 1rem; border-radius: 5px; text-align: left;">${err.message}</pre>
+                <pre style="background: black; padding: 1rem; border-radius: 5px; text-align: left; overflow-x: auto;">${err.message}</pre>
             </div>
         `);
     } finally {
@@ -370,35 +569,67 @@ router.get('/setup-master', validateSecretKey, async (req, res) => {
 });
 
 // ==========================================
-// 4. PARCHE DE ESTRUCTURA DE BD
+// 5. PARCHE DE ESTRUCTURA DE BD
 // ==========================================
+
+/**
+ * GET /fix-db-structure
+ * Añade columnas faltantes y repara la estructura
+ * @requires validateSecretKey
+ */
 router.get('/fix-db-structure', validateSecretKey, async (req, res) => {
     const client = await pool.connect();
     
     try {
+        await client.query('BEGIN');
+        
+        // Añadir columnas faltantes en characters
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS creature_type VARCHAR(50) DEFAULT 'vampire'");
+        
+        // Añadir columna faltante en chronicle_sections
         await client.query("ALTER TABLE chronicle_sections ADD COLUMN IF NOT EXISTS section_order INTEGER DEFAULT 0");
+        
+        // Crear índices de optimización
         await client.query("CREATE INDEX IF NOT EXISTS idx_characters_hidden ON characters(is_hidden) WHERE is_hidden = true");
+        await client.query("CREATE INDEX IF NOT EXISTS idx_sections_order ON chronicle_sections(chronicle_id, section_order)");
+        
+        // Crear tabla de permisos si no existe
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS role_permissions (
+                role VARCHAR(50) NOT NULL,
+                permission VARCHAR(100) NOT NULL,
+                is_allowed BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (role, permission)
+            )
+        `);
+        
+        await client.query('CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role)');
+        
+        await client.query('COMMIT');
 
         res.send(`
             <div style="font-family: serif; background: #0a3d0a; color: #90ee90; padding: 2rem; text-align: center;">
                 <h1>✅ Estructura Reparada</h1>
-                <p>Columnas adicionales verificadas y creadas:</p>
-                <ul style="list-style: none; padding: 0;">
+                <p style="margin-bottom: 1.5rem;">Columnas y optimizaciones verificadas:</p>
+                <ul style="list-style: none; padding: 0; line-height: 2;">
                     <li>✓ is_hidden (Bóveda)</li>
                     <li>✓ creature_type (Tipo de criatura)</li>
                     <li>✓ section_order (Orden de secciones)</li>
+                    <li>✓ role_permissions (Sistema de permisos)</li>
                     <li>✓ Índices optimizados</li>
                 </ul>
+                <p style="margin-top: 1.5rem; font-size: 0.9rem; opacity: 0.8;">Base de datos lista para uso.</p>
             </div>
         `);
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error("Error al reparar estructura:", err);
         res.status(500).send(`
-            <div style="font-family: serif; background: #3d0a0a; color: #ff6666; padding: 2rem;">
+            <div style="font-family: serif; background: #3d0a0a; color: #ff6666; padding: 2rem; text-align: center;">
                 <h1>❌ Error al Reparar</h1>
-                <pre>${err.message}</pre>
+                <pre style="background: black; padding: 1rem; border-radius: 5px; overflow-x: auto;">${err.message}</pre>
             </div>
         `);
     } finally {
