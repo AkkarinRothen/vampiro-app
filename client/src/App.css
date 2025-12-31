@@ -1,170 +1,599 @@
-/* Variables CSS para fácil personalización */
+/* ============================================
+   VARIABLES CSS - TEMA VAMPIRO LA MASCARADA
+   ============================================ */
 :root {
-  --primary-color: #646cff;
-  --react-color: #61dafb;
-  --text-muted: #888;
-  --shadow-glow: 2em;
-  --transition-speed: 300ms;
-  --max-width: 1280px;
-  --spacing-sm: 1.5em;
-  --spacing-md: 2em;
-  --logo-size: 6em;
+  /* Colores principales */
+  --color-blood: #8b0000;
+  --color-blood-light: #b91c1c;
+  --color-blood-dark: #450a0a;
+  --color-crimson: #dc2626;
+  --color-rose: #ef4444;
+  
+  /* Escala de grises */
+  --color-black: #000000;
+  --color-neutral-950: #0a0a0a;
+  --color-neutral-900: #171717;
+  --color-neutral-800: #262626;
+  --color-neutral-700: #404040;
+  --color-neutral-600: #525252;
+  --color-neutral-500: #737373;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-300: #d4d4d4;
+  
+  /* Efectos */
+  --shadow-blood: 0 0 20px rgba(220, 38, 38, 0.3);
+  --shadow-blood-intense: 0 0 30px rgba(220, 38, 38, 0.5);
+  --glow-blood: drop-shadow(0 0 8px rgba(220, 38, 38, 0.6));
+  
+  /* Transiciones */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+  --transition-slow: 500ms ease;
+  
+  /* Espaciado */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  
+  /* Bordes */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
 }
 
-/* Contenedor principal */
+/* ============================================
+   RESET Y BASE
+   ============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-black);
+  color: var(--color-neutral-300);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ============================================
+   CONTENEDOR PRINCIPAL
+   ============================================ */
 #root {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: var(--spacing-md);
-  text-align: center;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  background: linear-gradient(
+    to bottom,
+    var(--color-black) 0%,
+    var(--color-neutral-950) 50%,
+    var(--color-black) 100%
+  );
+  position: relative;
 }
 
-/* Logos */
-.logo {
-  height: var(--logo-size);
-  padding: var(--spacing-sm);
-  will-change: filter;
-  transition: filter var(--transition-speed) ease-in-out;
+/* Efecto de textura de fondo */
+#root::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    );
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ============================================
+   TIPOGRAFÍA
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Cinzel', 'Georgia', serif;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-rose);
+}
+
+.font-serif {
+  font-family: 'Cinzel', 'Georgia', serif;
+}
+
+/* ============================================
+   BOTONES GLOBALES
+   ============================================ */
+button {
+  font-family: inherit;
   cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all var(--transition-normal);
+  font-weight: 500;
 }
 
-.logo:hover {
-  filter: drop-shadow(0 0 var(--shadow-glow) var(--primary-color));
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
-.logo.react:hover {
-  filter: drop-shadow(0 0 var(--shadow-glow) var(--react-color));
+button:not(:disabled):hover {
+  transform: translateY(-2px);
 }
 
-/* Animación de rotación */
-@keyframes logo-spin {
+button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* Botón primario - Sangre */
+.btn-primary {
+  background-color: var(--color-blood);
+  color: white;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-blood-light);
+  box-shadow: var(--shadow-blood);
+}
+
+/* Botón secundario */
+.btn-secondary {
+  background-color: var(--color-neutral-800);
+  color: var(--color-neutral-300);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-neutral-700);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-neutral-700);
+  border-color: var(--color-crimson);
+  color: white;
+}
+
+/* Botón fantasma */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-neutral-400);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+}
+
+.btn-ghost:hover {
+  background-color: var(--color-neutral-900);
+  color: var(--color-rose);
+}
+
+/* ============================================
+   ENLACES
+   ============================================ */
+a {
+  color: var(--color-rose);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-crimson);
+}
+
+/* ============================================
+   INPUTS Y FORMULARIOS
+   ============================================ */
+input,
+textarea,
+select {
+  font-family: inherit;
+  background-color: var(--color-black);
+  border: 1px solid var(--color-neutral-700);
+  color: var(--color-neutral-300);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--color-blood);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-neutral-600);
+}
+
+/* ============================================
+   CARDS Y CONTENEDORES
+   ============================================ */
+.card {
+  background: linear-gradient(
+    135deg,
+    var(--color-neutral-900) 0%,
+    var(--color-black) 100%
+  );
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-normal);
+}
+
+.card:hover {
+  border-color: var(--color-blood-dark);
+  box-shadow: var(--shadow-blood);
+  transform: translateY(-2px);
+}
+
+/* ============================================
+   ANIMACIONES PERSONALIZADAS
+   ============================================ */
+@keyframes fade-in {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(20px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-blood {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes glow-blood {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--color-blood);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--color-crimson);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+
+.animate-pulse-blood {
+  animation: pulse-blood 2s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow-blood 2s ease-in-out infinite;
+}
+
+/* ============================================
+   SCROLLBAR PERSONALIZADO
+   ============================================ */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-black);
+  border-left: 1px solid var(--color-neutral-900);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-800);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-black);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-blood-dark);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-800) var(--color-black);
+}
+
+/* ============================================
+   UTILIDADES
+   ============================================ */
+.text-blood {
+  color: var(--color-crimson);
+}
+
+.text-muted {
+  color: var(--color-neutral-500);
+}
+
+.bg-blood {
+  background-color: var(--color-blood);
+}
+
+.border-blood {
+  border-color: var(--color-blood-dark);
+}
+
+.shadow-blood {
+  box-shadow: var(--shadow-blood);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px var(--color-crimson);
+}
+
+/* Espaciado */
+.p-0 { padding: 0; }
+.p-1 { padding: var(--spacing-xs); }
+.p-2 { padding: var(--spacing-sm); }
+.p-3 { padding: var(--spacing-md); }
+.p-4 { padding: var(--spacing-lg); }
+.p-5 { padding: var(--spacing-xl); }
+
+.m-0 { margin: 0; }
+.m-1 { margin: var(--spacing-xs); }
+.m-2 { margin: var(--spacing-sm); }
+.m-3 { margin: var(--spacing-md); }
+.m-4 { margin: var(--spacing-lg); }
+.m-5 { margin: var(--spacing-xl); }
+
+/* ============================================
+   LOADING STATES
+   ============================================ */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-neutral-900) 0%,
+    var(--color-neutral-800) 50%,
+    var(--color-neutral-900) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: var(--radius-md);
+}
+
+.spinner {
+  border: 3px solid var(--color-neutral-800);
+  border-top-color: var(--color-crimson);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-/* Aplicar animación solo si el usuario no prefiere movimiento reducido */
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* ============================================
+   MODALES Y OVERLAYS
+   ============================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.2s ease-out;
+}
+
+.modal-content {
+  background: linear-gradient(
+    135deg,
+    var(--color-neutral-900) 0%,
+    var(--color-black) 100%
+  );
+  border: 1px solid var(--color-blood-dark);
+  border-radius: var(--radius-xl);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 20px 60px rgba(220, 38, 38, 0.3);
+}
+
+/* ============================================
+   BADGES Y TAGS
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-success {
+  background-color: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-warning {
+  background-color: rgba(234, 179, 8, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.badge-danger {
+  background-color: rgba(220, 38, 38, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.badge-info {
+  background-color: rgba(163, 163, 163, 0.2);
+  color: var(--color-neutral-400);
+  border: 1px solid var(--color-neutral-700);
+}
+
+/* ============================================
+   TOOLTIPS
+   ============================================ */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background-color: var(--color-neutral-900);
+  color: white;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+  z-index: 100;
+  border: 1px solid var(--color-blood-dark);
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 1024px) {
+  :root {
+    font-size: 15px;
   }
 }
 
-/* Tarjetas */
-.card {
-  padding: var(--spacing-md);
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.05);
-  transition: background-color var(--transition-speed) ease;
-}
-
-.card:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
-/* Texto de documentación */
-.read-the-docs {
-  color: var(--text-muted);
-  font-size: 0.9em;
-  margin-top: var(--spacing-md);
-  transition: color var(--transition-speed) ease;
-}
-
-.read-the-docs:hover {
-  color: var(--primary-color);
-}
-
-/* Botones mejorados */
-button {
-  transition: all var(--transition-speed) ease;
-}
-
-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(100, 108, 255, 0.3);
-}
-
-button:active {
-  transform: translateY(0);
-}
-
-/* Enlaces mejorados */
-a {
-  text-decoration: none;
-  transition: opacity var(--transition-speed) ease;
-}
-
-a:hover {
-  opacity: 0.8;
-}
-
-/* Responsividad mejorada */
 @media (max-width: 768px) {
-  #root {
-    padding: 1rem;
-  }
-  
-  .logo {
-    height: 4em;
-    padding: 1em;
+  :root {
+    font-size: 14px;
   }
   
   .card {
-    padding: 1.5em;
+    padding: var(--spacing-md);
   }
 }
 
 @media (max-width: 480px) {
-  #root {
-    padding: 0.5rem;
-  }
-  
-  .logo {
-    height: 3em;
-    padding: 0.75em;
+  :root {
+    font-size: 13px;
   }
   
   .card {
-    padding: 1em;
+    padding: var(--spacing-sm);
+  }
+  
+  .modal-content {
+    max-width: 95vw;
+    max-height: 95vh;
   }
 }
 
-/* Modo de contraste alto */
+/* ============================================
+   ACCESIBILIDAD
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @media (prefers-contrast: high) {
-  .card {
-    border: 2px solid var(--primary-color);
+  :root {
+    --color-blood: #ff0000;
+    --color-crimson: #ff3333;
   }
   
-  .logo:hover {
-    filter: drop-shadow(0 0 calc(var(--shadow-glow) * 1.5) var(--primary-color));
+  .card {
+    border-width: 2px;
+  }
+  
+  button {
+    border: 2px solid currentColor;
   }
 }
 
-/* Tema oscuro mejorado */
-@media (prefers-color-scheme: dark) {
-  .card {
-    background-color: rgba(255, 255, 255, 0.05);
+/* Modo de enfoque visible para teclado */
+:focus-visible {
+  outline: 2px solid var(--color-crimson);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+  body {
+    background: white;
+    color: black;
   }
   
-  .read-the-docs {
-    color: #999;
+  .no-print {
+    display: none !important;
   }
 }
 
-/* Tema claro */
-@media (prefers-color-scheme: light) {
-  .card {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-  
-  .read-the-docs {
-    color: #666;
-  }
+/* ============================================
+   SELECCIÓN DE TEXTO
+   ============================================ */
+::selection {
+  background-color: var(--color-blood);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: var(--color-blood);
+  color: white;
 }
