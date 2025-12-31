@@ -4,47 +4,74 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- SEO Básico -->
-    <meta name="description" content="VTM 5E" />
-    <meta name="keywords" content="react, vite, aplicación web" />
+    <!-- SEO Mejorado -->
+    <title>VTM 5E - Crónicas del Mundo de Tinieblas</title>
+    <meta name="description" content="Herramienta interactiva para crear y gestionar crónicas de Vampire: The Masquerade 5ª Edición. Fichas de personaje, notas de narrador y ambientación gótica en un solo lugar." />
+    <meta name="keywords" content="Vampire The Masquerade, VTM 5E, Mundo de Tinieblas, rol, vampiros, crónicas, ficha personaje, narrador" />
     <meta name="author" content="AKKARIN ROTHEN" />
-    
+    <meta name="robots" content="index, follow" />
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="VTM 5E" />
-    <meta property="og:description" content="VTM 5E" />
-    <meta property="og:image" content="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNCL5kF4O5VzsBI8g0yqGvL6xmEQJObixSSQ&s" />
+    <meta property="og:title" content="VTM 5E - Crónicas del Mundo de Tinieblas" />
+    <meta property="og:description" content="Explora la noche eterna. Crea tus crónicas vampíricas con esta herramienta dedicada a VTM 5ª Edición." />
+    <meta property="og:image" content="https://images.ctfassets.net/swt2d4x42m5n/3p1qF0bJ7rV3oL2f9k8e0j/1e4b0c4e4f3a4d4e4b4f4e4d4e4b4f4e/Vampire_The_Masquerade_5th_Edition_Corebook_Cover.jpg" />
+    <meta property="og:image:alt" content="Portada oficial de Vampire: The Masquerade 5th Edition" />
+    <meta property="og:url" content="https://tu-dominio.com" />
+    <meta property="og:locale" content="es_ES" />
 
-    <!-- Twitter -->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="VTM 5E" />
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNCL5kF4O5VzsBI8g0yqGvL6xmEQJObixSSQ&s" />
-    <link rel="apple-touch-icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNCL5kF4O5VzsBI8g0yqGvL6xmEQJObixSSQ&s" />
-    
-    <!-- Preconnect para mejorar performance -->
+    <meta name="twitter:title" content="VTM 5E - Crónicas del Mundo de Tinieblas" />
+    <meta name="twitter:description" content="Herramienta para narradores y jugadores de Vampire: The Masquerade 5E." />
+    <meta name="twitter:image" content="https://images.ctfassets.net/swt2d4x42m5n/3p1qF0bJ7rV3oL2f9k8e0j/1e4b0c4e4f3a4d4e4b4f4e4d4e4b4f4e/Vampire_The_Masquerade_5th_Edition_Corebook_Cover.jpg" />
+    <meta name="twitter:creator" content="@tu_usuario" />
+
+    <!-- Favicon (recomendado: descarga y aloja localmente) -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Preconnect para fuentes góticas (opcional pero recomendado) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#646cff" />
-    
-    <title>VTM 5E - Crónicas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Uncial+Antiqua&display=swap" rel="stylesheet" />
+
+    <!-- Theme Color - Rojo sangre oscuro, muy VTM -->
+    <meta name="theme-color" content="#8B0000" />
+    <meta name="msapplication-TileColor" content="#8B0000" />
+
   </head>
   <body>
-    <!-- Contenedor principal -->
+    <!-- Contenedor principal de React -->
     <div id="root"></div>
-    
-    <!-- Fallback para usuarios sin JavaScript -->
+
+    <!-- Fallback sin JavaScript -->
     <noscript>
-      <div style="text-align: center; padding: 50px; font-family: system-ui;">
-        <h1>JavaScript Requerido</h1>
-        <p>Esta aplicación requiere JavaScript para funcionar. Por favor, habilítalo en tu navegador.</p>
+      <div style="
+        min-height: 100vh;
+        background: #000;
+        color: #ccc;
+        font-family: 'Crimson Text', Georgia, serif;
+        text-align: center;
+        padding: 60px 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      ">
+        <h1 style="font-size: 2.5rem; color: #8B0000; margin-bottom: 20px;">
+          🩸 JavaScript Requerido 🩸
+        </h1>
+        <p style="font-size: 1.2rem; max-width: 600px;">
+          Esta crónica digital del Mundo de Tinieblas requiere JavaScript para despertar.<br />
+          Por favor, activa las sombras de tu navegador y regresa a la noche.
+        </p>
       </div>
     </noscript>
-    
-    <!-- Script principal -->
+
+    <!-- Script principal de la app -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

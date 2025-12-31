@@ -61,7 +61,7 @@ const Icons = {
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
         </svg>
     ),
-    
+   
     // --- FORMATO DE TEXTO ---
     Bold: (props) => (
         <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -143,6 +143,74 @@ const Icons = {
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="16" x2="12" y2="12"></line>
             <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+    ),
+
+    // --- ICONOS TEMÁTICOS DE VAMPIRE: THE MASQUERADE ---
+    Bat: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M16.5 3.5 19 7l-2 2 2.5 2.5-2.5 4 2 2-1.5 3-5-1-2-2-2 2-5 1-1.5-3-1-2 2-4-2.5-2.5L5 7l2.5-3.5"></path>
+            <path d="M12 12v.01"></path>
+        </svg>
+    ),
+    BloodDrop: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2a5 5 0 0 1 5 5c0 3-2.5 7.5-5 11-2.5-3.5-5-8-5-11a5 5 0 0 1 5-5z"></path>
+        </svg>
+    ),
+    Fang: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 10c0-4 2-6 2-6s2 2 2 6v4l-2 6-2-6z"></path>
+        </svg>
+    ),
+    Coffin: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 4h12l2 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8l2-4z"></path>
+            <path d="M12 8v8"></path>
+        </svg>
+    ),
+    Ankh: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="5" r="3"></circle>
+            <path d="M12 8v8"></path>
+            <path d="M8 16h8"></path>
+            <path d="M12 16v4"></path>
+        </svg>
+    ),
+    MoonFull: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+        </svg>
+    ),
+    RoseWilted: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3c-3 3-4 6-4 10a6 6 0 0 0 12 0c0-4-1-7-4-10"></path>
+            <path d="M12 13v4l-3 3"></path>
+            <path d="M12 13v4l3 3"></path>
+        </svg>
+    ),
+    Mask: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2a10 10 0 0 1 10 10c0 5-5 10-10 10S2 17 2 12A10 10 0 0 1 12 2z"></path>
+            <circle cx="8" cy="10" r="2"></circle>
+            <circle cx="16" cy="10" r="2"></circle>
+            <path d="M8 15s2 3 8 3 8-3 8-3"></path>
+        </svg>
+    ),
+    Skull: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="9" r="7"></circle>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+            <path d="M5 20h14v-4H5z"></path>
+        </svg>
+    ),
+    CrossInverted: (props) => (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2v10"></path>
+            <path d="M5 15h14"></path>
+            <path d="M12 22v-6"></path>
         </svg>
     )
 };

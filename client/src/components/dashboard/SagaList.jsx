@@ -231,7 +231,7 @@ const SagaList = ({ user }) => {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-serif text-red-500 mb-2 flex items-center gap-3">
-                            <span className="text-4xl">📚</span>
+                            <span className="text-4xl">🩸</span>
                             Crónicas de Vampiro
                         </h1>
                         <p className="text-neutral-400 text-sm">

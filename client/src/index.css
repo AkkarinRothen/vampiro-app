@@ -2,43 +2,135 @@
 @tailwind components;
 @tailwind utilities;
 
-/* --- Estilos Globales --- */
-body {
-    /* Usamos un negro profundo (neutral-950) para mayor inmersión */
-    background-color: #0a0a0a; 
-    color: #e5e5e5;
+/* --- Configuración de Fuentes Góticas (ya cargadas en index.html) --- */
+@layer base {
+  body {
+    @apply font-serif; /* Crimson Text como base */
+    background-color: #0a0a0a; /* Negro profundo, casi absoluto */
+    color: #e5e5e5; /* Gris claro para buena legibilidad */
     margin: 0;
     padding: 0;
-    /* Suavizado de fuentes para mejor lectura en fondo oscuro */
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-wider;
+    font-family: 'Uncial Antiqua', 'Crimson Text', Georgia, serif;
+    letter-spacing: 0.05em;
+  }
+}
+
+/* --- Paleta de Colores Personalizada (VTM Style) --- */
+@layer base {
+  :root {
+    --vtm-blood: #8B0000;        /* Rojo sangre oscuro (DarkRed) */
+    --vtm-blood-light: #a11717;  /* Rojo sangre más vivo */
+    --vtm-blood-glow: #dc2626;   /* Rojo brillante para hover/acento */
+    --vtm-shadow: #0f172a;       /* Azul-negro profundo (slate-900+) */
+    --vtm-veil: #1e1b1b;         /* Gris oscuro con matiz rojo (fondo secundario) */
+    --vtm-gold: #b8860b;         /* Dorado antiguo (Toreador vibes) */
+    --vtm-silver: #94a3b8;      /* Plata fría (Ventrue, Lasombra) */
+    --vtm-mist: rgba(15, 15, 20, 0.9); /* Niebla para overlays */
+  }
 }
 
 /* --- Utilidades Personalizadas --- */
 @layer utilities {
-  /* Animación de entrada suave */
+  /* Animaciones suaves de entrada */
   .animate-fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
+    animation: fadeIn 0.6s ease-out forwards;
   }
 
-  /* Ocultar barra de desplazamiento (usado en ImageSizeControls) */
-  .scrollbar-hide::-webkit-scrollbar {
-      display: none;
+  .animate-blood-drip {
+    animation: bloodDrip 4s ease-in-out infinite alternate;
   }
+
+  /* Ocultar scrollbar (útil en paneles laterales, listas largas, etc.) */
   .scrollbar-hide {
-      -ms-overflow-style: none;  /* IE and Edge */
-      scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Efecto de texto con sombra roja sutil (perfecto para títulos vampíricos) */
+  .text-glow-blood {
+    text-shadow: 0 0 8px rgba(139, 0, 0, 0.6);
+  }
+
+  /* Fondo con textura sutil de terciopelo o piedra antigua */
+  .bg-vtm-texture {
+    background-image: 
+      radial-gradient(circle at 30% 70%, rgba(139, 0, 0, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 70% 30%, rgba(15, 15, 30, 0.1) 0%, transparent 60%);
+  }
+
+  /* Bordes con efecto envejecido */
+  .border-vtm {
+    border-color: var(--vtm-blood);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   }
 }
 
-/* --- Keyframes --- */
+/* --- Keyframes Personalizados --- */
 @keyframes fadeIn {
-  from { 
-    opacity: 0; 
-    transform: translateY(10px); 
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+@keyframes bloodDrip {
+  0% {
+    text-shadow: 0 0 8px rgba(139, 0, 0, 0.4);
+  }
+  100% {
+    text-shadow: 
+      0 0 12px rgba(139, 0, 0, 0.6),
+      0 10px 20px rgba(139, 0, 0, 0.3);
+  }
+}
+
+/* --- Componentes Personalizados (opcional, para reutilizar) --- */
+@layer components {
+  .card-vtm {
+    @apply bg-gradient-to-b from-gray-900 to-black border border-red-900/30 rounded-lg p-6 shadow-xl backdrop-blur-sm bg-vtm-texture;
+  }
+
+  .btn-blood {
+    @apply bg-red-900 hover:bg-red-800 active:bg-red-950 text-white font-semibold px-6 py-3 rounded transition-all duration-300 border border-red-700 hover:border-red-600 hover:shadow-lg hover:shadow-red-900/50;
+  }
+
+  .input-vtm {
+    @apply bg-gray-900 border border-gray-700 focus:border-red-800 text-white placeholder-gray-500 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-900/50 transition-all;
+  }
+
+  .title-vtm {
+    @apply text-3xl md:text-4xl font-bold text-glow-blood uppercase tracking-widest;
+  }
+}
+
+/* --- Scrollbar Personalizada (opcional, solo Webkit) --- */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vtm-blood-light);
 }
