@@ -203,17 +203,11 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
                 <img 
                     src={saga?.cover_image || '/images/default-chronicle.jpg'} 
                     alt={saga?.title}
-                    className="w-full h-full object-cover filter blur-[2px] scale-105 z-0"
+                    className="w-full h-full object-cover filter blur-[2px] scale-105"
                 />
                 
-                {/* --- EFECTO OLAS DE SANGRE --- */}
-                <div className="ocean">
-                    <div className="wave"></div>
-                    <div className="wave"></div>
-                </div>
-
-                <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/70 to-transparent z-20 flex flex-col justify-end p-6 md:p-12 pointer-events-none">
-                    <div className="container mx-auto pointer-events-auto">
+                <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/70 to-transparent z-20 flex flex-col justify-end p-6 md:p-12">
+                    <div className="container mx-auto">
                         <div className="flex justify-between items-end">
                             <div>
                                 <button 
@@ -237,7 +231,7 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
                             {/* Botón Glosario */}
                             <button 
                                 onClick={() => setShowGlossary(true)}
-                                className="hidden md:flex items-center gap-2 px-4 py-2 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded text-sm text-neutral-300 transition-all z-30 relative"
+                                className="hidden md:flex items-center gap-2 px-4 py-2 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded text-sm text-neutral-300 transition-all"
                             >
                                 <Icons.BookOpen className="w-4 h-4 text-purple-400" />
                                 <span>Glosario & Lore</span>
@@ -326,7 +320,7 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
                                 <ChronicleSection
                                     section={section}
                                     glossary={glossary}
-                                    canEdit={canEdit} 
+                                    canEdit={canEdit} // [CRÍTICO] Pasamos el permiso para que la sección oculte sus botones
                                     isFirst={index === 0}
                                     isLast={index === sections.length - 1}
                                     onEdit={handleEditStart}
@@ -347,51 +341,8 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
                 onSave={handleSaveGlossaryTerm} 
                 onDelete={handleDeleteGlossaryTerm}
                 glossary={glossary}
-                canEdit={canEdit} 
+                canEdit={canEdit} // Permitimos editar el lore si tiene permisos
             />
-
-            {/* ESTILOS DE ANIMACIÓN DE OLAS (Sangre) */}
-            <style jsx>{`
-                .ocean {
-                    height: 120px;
-                    width: 100%;
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    z-index: 15;
-                    overflow: hidden;
-                    pointer-events: none;
-                }
-
-                .wave {
-                    background: url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg) repeat-x;
-                    position: absolute;
-                    top: -198px;
-                    width: 6400px;
-                    height: 198px;
-                    animation: wave 7s cubic-bezier( 0.36, 0.45, 0.63, 0.53) infinite;
-                    transform: translate3d(0, 0, 0);
-                    /* Filtro para convertirlo en rojo sangre oscuro */
-                    filter: invert(10%) sepia(86%) saturate(6054%) hue-rotate(352deg) brightness(90%) contrast(124%);
-                    opacity: 0.4;
-                }
-
-                .wave:nth-of-type(2) {
-                    top: -175px;
-                    animation: wave 7s cubic-bezier( 0.36, 0.45, 0.63, 0.53) -.125s infinite, swell 7s ease -1.25s infinite;
-                    opacity: 0.6;
-                }
-
-                @keyframes wave {
-                    0% { margin-left: 0; }
-                    100% { margin-left: -1600px; }
-                }
-
-                @keyframes swell {
-                    0%, 100% { transform: translate3d(0,-25px,0); }
-                    50% { transform: translate3d(0,5px,0); }
-                }
-            `}</style>
         </div>
     );
 };
