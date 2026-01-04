@@ -2,49 +2,96 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import Icons from '../ui/Icons';
 import SagaModal from '../forms/SagaModal';
+// [MEJORA 1] Importamos el hook de notificaciones
+import { useToast } from '../ui/Toast'; 
 
 const SagaList = ({ user }) => {
+    // --- ESTADOS DE DATOS ---
     const [sagas, setSagas] = useState([]);
     const [filteredSagas, setFilteredSagas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     
-    // Estados para UI
+    // --- ESTADOS DE INTERFAZ ---
     const [showModal, setShowModal] = useState(false);
     const [editingSaga, setEditingSaga] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('recent');
-    const [deleteLoading, setDeleteLoading] = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(null); // ID de la saga siendo borrada
 
-    // Carga inicial desde la API
+    // --- HOOKS ---
+    const toast = useToast();
+
+    // --- PERMISOS ---
+    // Narradores y Admins pueden crear/editar
+    const canCreateEdit = user?.role === 'admin' || user?.role === 'storyteller';
+    // Solo el Príncipe (Admin) puede destruir historias permanentemente
+    const isAdmin = user?.role === 'admin';
+
+    // 1. Carga Inicial
     useEffect(() => {
+        let isMounted = true; // Evitar actualización de estado si el componente se desmonta
+
+        const fetchSagas = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                
+                const response = await fetch('/api/chronicles', { 
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error en la red de la Camarilla: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (isMounted) {
+                    // Soporte robusto para diferentes estructuras de respuesta
+                    setSagas(Array.isArray(data) ? data : data.chronicles || []);
+                }
+            } catch (err) {
+                if (isMounted) {
+                    console.error('Error fetching sagas:', err);
+                    setError(err.message || 'No se pudo conectar con los Archivos.');
+                    // No usamos toast aquí para no saturar al entrar
+                }
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
         fetchSagas();
+
+        return () => { isMounted = false; };
     }, []);
 
-    // Filtrado y Ordenamiento optimizado
+    // 2. Filtrado y Ordenamiento (Memoizado implícitamente por useEffect)
     useEffect(() => {
         let result = [...sagas];
         
-        // Filtrar por término de búsqueda
+        // Filtro de búsqueda
         if (searchTerm.trim()) {
             const searchLower = searchTerm.toLowerCase();
             result = result.filter(saga => 
                 saga.title.toLowerCase().includes(searchLower) ||
-                saga.description?.toLowerCase().includes(searchLower) ||
-                saga.storyteller?.toLowerCase().includes(searchLower)
+                (saga.description && saga.description.toLowerCase().includes(searchLower)) ||
+                (saga.storyteller && saga.storyteller.toLowerCase().includes(searchLower))
             );
         }
 
-        // Ordenar según criterio seleccionado
+        // Ordenamiento
         switch(sortBy) {
             case 'recent':
-                result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
                 break;
             case 'oldest':
-                result.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                result.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
                 break;
             case 'alpha':
-                result.sort((a, b) => a.title.localeCompare(b.title));
+                result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
                 break;
             case 'sessions':
                 result.sort((a, b) => (b.sessions || 0) - (a.sessions || 0));
@@ -56,48 +103,26 @@ const SagaList = ({ user }) => {
         setFilteredSagas(result);
     }, [sagas, searchTerm, sortBy]);
 
-    // Fetch de crónicas con mejor manejo de errores
-    const fetchSagas = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            
-            const response = await fetch('/api/chronicles', { 
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Error del servidor: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            setSagas(Array.isArray(data) ? data : data.chronicles || []);
-        } catch (err) {
-            console.error('Error fetching sagas:', err);
-            setError(err.message || 'No se pudo conectar con la red de la Camarilla.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Guardar crónica (crear o editar)
+    // 3. Crear / Editar Crónica
     const handleSaveSaga = async (sagaData) => {
+        if (!canCreateEdit) {
+            toast.error('Tus credenciales no permiten modificar los registros.');
+            return false;
+        }
+
         try {
             const isEditing = Boolean(sagaData.id);
             const url = isEditing ? `/api/chronicles/${sagaData.id}` : '/api/chronicles';
             const method = isEditing ? 'PUT' : 'POST';
 
-            // Preparar datos para enviar
+            // Limpieza de datos antes de enviar
             const dataToSend = {
                 title: sagaData.title?.trim(),
                 cover_image: sagaData.cover_image?.trim(),
                 description: sagaData.description?.trim(),
                 storyteller: sagaData.storyteller?.trim(),
                 players: sagaData.players?.trim(),
-                sessions: sagaData.sessions || 0,
+                sessions: parseInt(sagaData.sessions) || 0,
                 status: sagaData.status || 'active'
             };
 
@@ -113,32 +138,45 @@ const SagaList = ({ user }) => {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Error al guardar la crónica');
+                // Manejo especial para errores de permisos (403)
+                if (response.status === 403) {
+                    throw new Error("Permisos insuficientes en el servidor.");
+                }
+                throw new Error(errorData.error || errorData.message || 'Error al guardar la crónica');
             }
 
             const result = await response.json();
-            const savedSaga = result.chronicle || result;
+            const savedSaga = result.chronicle || result; // Adaptable a tu API
 
-            // Actualizar estado local de manera optimista
+            // Actualización optimista del estado local
             if (isEditing) {
                 setSagas(prev => prev.map(s => s.id === savedSaga.id ? savedSaga : s));
+                toast.success(`Crónica "${savedSaga.title}" actualizada.`);
             } else {
                 setSagas(prev => [savedSaga, ...prev]);
+                toast.success('Nueva crónica inaugurada.');
             }
             
-            return true;
+            return true; // Éxito para cerrar el modal
         } catch (err) {
             console.error('Error saving saga:', err);
+            toast.error(err.message);
             throw err;
         }
     };
 
-    // Eliminar crónica con confirmación mejorada
+    // 4. Eliminar Crónica
     const handleDelete = async (e, saga) => {
         e.preventDefault(); 
         e.stopPropagation();
         
-        const confirmMessage = `⚠️ ¿Estás seguro de eliminar "${saga.title}"?\n\nEsta acción eliminará la crónica y todo su contenido de forma permanente.\n\nNo se puede deshacer.`;
+        if (!isAdmin) {
+            toast.warning('Solo el Príncipe puede decretar la destrucción final.');
+            return;
+        }
+        
+        // Usamos confirm nativo por seguridad rápida, podría ser un modal custom
+        const confirmMessage = `⚠️ ¿Confirmas la destrucción de "${saga.title}"?\n\nEsta acción eliminará todos los registros, personajes y secretos asociados.\n\nEs irreversible.`;
         
         if (!window.confirm(confirmMessage)) return;
 
@@ -148,71 +186,78 @@ const SagaList = ({ user }) => {
             const response = await fetch(`/api/chronicles/${saga.id}`, {
                 method: 'DELETE',
                 credentials: 'include',
-                headers: {
-                    'Accept': 'application/json'
-                }
+                headers: { 'Accept': 'application/json' }
             });
+
+            if (response.status === 403) {
+                throw new Error("No tienes autoridad para esto.");
+            }
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Error al eliminar');
+                throw new Error(errorData.error || errorData.message || 'Error al eliminar');
             }
 
-            // Actualizar estado local
             setSagas(prev => prev.filter(s => s.id !== saga.id));
+            toast.info(`La crónica "${saga.title}" ha sido eliminada.`);
             
         } catch (err) {
             console.error('Error deleting saga:', err);
-            alert(`Error: ${err.message || 'No se pudo eliminar la crónica'}`);
+            toast.error(err.message);
         } finally {
             setDeleteLoading(null);
         }
     };
 
-    // Abrir modal de edición
+    // --- MANEJADORES DE UI ---
     const handleEditClick = (e, saga) => {
         e.preventDefault();
         e.stopPropagation();
+        
+        if (!canCreateEdit) {
+            toast.warning('Acceso de edición denegado.');
+            return;
+        }
+        
         setEditingSaga(saga);
         setShowModal(true);
     };
 
-    // Cerrar modal
     const handleCloseModal = useCallback(() => {
         setShowModal(false);
         setEditingSaga(null);
     }, []);
 
-    // Limpiar búsqueda
-    const handleClearSearch = () => {
-        setSearchTerm('');
+    const handleClearSearch = () => setSearchTerm('');
+
+    const handleReload = () => {
+        // Forzamos recarga simple volviendo a llamar fetch dentro del componente no es ideal sin extraer la función, 
+        // pero podemos recargar la página o extraer fetchSagas fuera del useEffect si fuera necesario.
+        // Por simplicidad en este patrón robusto:
+        window.location.reload(); 
     };
 
-    // Renderizado de loading
+    // --- RENDERIZADO ---
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-900 mx-auto mb-4"></div>
-                    <p className="text-neutral-500 font-serif tracking-widest text-sm">DESPERTANDO CRÓNICAS...</p>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[400px] animate-pulse">
+                <div className="mb-4 text-4xl text-blood">🩸</div>
+                <p className="text-neutral-500 font-serif tracking-widest text-sm">LEYENDO ARCHIVOS...</p>
             </div>
         );
     }
 
-    // Renderizado de error
     if (error) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center text-red-500 bg-red-900/10 p-8 rounded border border-red-900/30 max-w-md">
-                    <div className="mb-4 text-5xl">
-                        💀
-                    </div>
-                    <p className="text-xl mb-2 font-serif">Fallo en la Sangre</p>
-                    <p className="text-sm text-neutral-400 mb-4">{error}</p>
+                <div className="text-center text-red-500 bg-red-950/30 p-8 rounded border border-red-900/30 max-w-md backdrop-blur-sm">
+                    <div className="mb-4 text-5xl">💀</div>
+                    <h3 className="text-xl mb-2 font-serif text-blood-bright">Fallo en la Sangre</h3>
+                    <p className="text-sm text-neutral-400 mb-6">{error}</p>
                     <button 
-                        onClick={fetchSagas} 
-                        className="px-6 py-2 bg-red-900 hover:bg-red-800 text-white rounded transition-colors inline-flex items-center gap-2"
+                        onClick={handleReload} 
+                        className="px-6 py-2 bg-red-900 hover:bg-red-800 text-white rounded transition-colors inline-flex items-center gap-2 border border-red-700"
                     >
                         <Icons.RefreshCw className="w-4 h-4" />
                         Reintentar Conexión
@@ -222,45 +267,46 @@ const SagaList = ({ user }) => {
         );
     }
 
-    const canCreateEdit = user?.role === 'admin' || user;
-
     return (
         <div className="space-y-6 animate-fade-in">
-            {/* Header con estadísticas */}
-            <div className="bg-gradient-to-r from-red-900/20 via-neutral-900/50 to-red-900/20 p-6 rounded-lg border border-red-900/30">
-                <div className="flex items-center justify-between">
+            {/* Header / Banner Principal */}
+            <div className="bg-gradient-to-r from-red-950/40 via-neutral-900/60 to-red-950/40 p-6 rounded-lg border border-red-900/30 backdrop-blur-md shadow-lg">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-serif text-red-500 mb-2 flex items-center gap-3">
-                            <span className="text-4xl">🩸</span>
-                            Crónicas de Vampiro
+                        <h1 className="text-3xl font-serif text-blood mb-2 flex items-center gap-3 drop-shadow-md">
+                            <span className="text-3xl">🧛</span>
+                            Crónicas de la Estirpe
                         </h1>
-                        <p className="text-neutral-400 text-sm">
-                            {sagas.length} {sagas.length === 1 ? 'crónica disponible' : 'crónicas disponibles'}
-                            {filteredSagas.length !== sagas.length && ` • ${filteredSagas.length} filtradas`}
+                        <p className="text-neutral-400 text-sm font-mono">
+                            {sagas.length} {sagas.length === 1 ? 'registro encontrado' : 'registros encontrados'}
+                            {filteredSagas.length !== sagas.length && ` • ${filteredSagas.length} visibles`}
                         </p>
                     </div>
+                    
+                    {/* Botón Crear (Visible solo para roles autorizados) */}
                     {canCreateEdit && (
                         <button
                             onClick={() => { setEditingSaga(null); setShowModal(true); }}
-                            className="px-4 py-2 bg-red-900 hover:bg-red-800 text-white rounded-lg transition-colors flex items-center gap-2 font-serif tracking-wide"
+                            className="px-5 py-2.5 bg-blood hover:bg-blood-light text-white rounded shadow-[0_0_15px_rgba(185,28,28,0.3)] transition-all hover:scale-105 flex items-center gap-2 font-serif tracking-wide text-sm border border-red-800"
                         >
-                            <Icons.Plus className="w-5 h-5" />
+                            <Icons.Plus className="w-4 h-4" />
                             Nueva Crónica
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Barra de Herramientas Mejorada */}
+            {/* Barra de Herramientas (Búsqueda y Filtros) */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-neutral-900/50 p-4 rounded-lg border border-neutral-800 backdrop-blur-sm">
-                <div className="relative w-full md:w-80">
-                    <span className="absolute left-3 top-2.5 text-neutral-500">
+                {/* Buscador */}
+                <div className="relative w-full md:w-96 group">
+                    <span className="absolute left-3 top-2.5 text-neutral-500 group-focus-within:text-blood transition-colors">
                         <Icons.Search className="w-5 h-5" />
                     </span>
                     <input 
                         type="text" 
-                        placeholder="Buscar por título, narrador o descripción..." 
-                        className="w-full bg-black border border-neutral-700 rounded-full py-2 pl-10 pr-10 text-sm focus:border-red-900 focus:ring-1 focus:ring-red-900/50 outline-none text-neutral-300 transition-all"
+                        placeholder="Buscar por título, narrador..." 
+                        className="w-full bg-black/50 border border-neutral-700 rounded-full py-2 pl-10 pr-10 text-sm focus:border-blood focus:ring-1 focus:ring-blood/50 outline-none text-neutral-200 transition-all placeholder-neutral-600"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -270,197 +316,155 @@ const SagaList = ({ user }) => {
                             className="absolute right-3 top-2.5 text-neutral-500 hover:text-red-500 transition-colors"
                             title="Limpiar búsqueda"
                         >
-                            <Icons.X className="w-5 h-5" />
+                            <Icons.X className="w-4 h-4" />
                         </button>
                     )}
                 </div>
                 
+                {/* Filtros */}
                 <div className="flex gap-3 w-full md:w-auto">
                     <select 
-                        className="bg-black border border-neutral-700 rounded-lg px-4 py-2 text-sm text-neutral-400 focus:border-red-900 focus:ring-1 focus:ring-red-900/50 outline-none cursor-pointer"
+                        className="bg-black/50 border border-neutral-700 rounded-lg px-4 py-2 text-sm text-neutral-300 focus:border-blood focus:ring-1 focus:ring-blood/50 outline-none cursor-pointer hover:bg-neutral-800/50 transition-colors"
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
                     >
-                        <option value="recent">📅 Más recientes</option>
-                        <option value="oldest">🕰️ Más antiguos</option>
-                        <option value="alpha">🔤 Alfabético</option>
-                        <option value="sessions">🎲 Por sesiones</option>
+                        <option value="recent">📅 Recientes</option>
+                        <option value="oldest">🕰️ Antiguos</option>
+                        <option value="alpha">🔤 A-Z</option>
+                        <option value="sessions">🎲 Sesiones</option>
                     </select>
-                    
-                    <button
-                        onClick={fetchSagas}
-                        className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 rounded-lg transition-colors flex items-center gap-2"
-                        title="Recargar crónicas"
-                    >
-                        🔄
-                    </button>
                 </div>
             </div>
 
-            {/* Grid de Crónicas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* Grid de Resultados */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                 
-                {/* Botón Nueva Crónica - Card Especial */}
+                {/* Card Especial: Crear Nueva (Acceso Rápido) */}
                 {canCreateEdit && (
                     <button
                         onClick={() => { setEditingSaga(null); setShowModal(true); }}
-                        className="group h-80 border-2 border-dashed border-neutral-800 rounded-lg flex flex-col items-center justify-center text-neutral-600 hover:text-red-500 hover:border-red-900/50 hover:bg-red-900/5 cursor-pointer transition-all duration-300 relative overflow-hidden"
+                        className="group h-80 border-2 border-dashed border-neutral-800 hover:border-blood/60 rounded-lg flex flex-col items-center justify-center text-neutral-600 hover:text-blood-light hover:bg-red-950/10 cursor-pointer transition-all duration-300 relative overflow-hidden"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-br from-red-900/0 via-red-900/0 to-red-900/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        <div className="relative z-10 flex flex-col items-center">
-                            <div className="transform group-hover:scale-110 transition-transform duration-300 mb-3 p-5 rounded-full bg-neutral-900 group-hover:bg-red-900 group-hover:text-white shadow-lg">
-                                <Icons.Plus className="w-8 h-8" />
-                            </div>
-                            <span className="font-serif tracking-wider text-sm uppercase">Nueva Crónica</span>
-                            <span className="text-xs text-neutral-700 group-hover:text-neutral-500 mt-2">
-                                Crear una nueva historia
-                            </span>
+                        <div className="w-16 h-16 rounded-full bg-neutral-900 group-hover:bg-blood flex items-center justify-center mb-4 transition-colors shadow-xl group-hover:shadow-[0_0_20px_rgba(220,38,38,0.4)]">
+                            <Icons.Plus className="w-8 h-8 text-neutral-500 group-hover:text-white" />
                         </div>
+                        <span className="font-serif tracking-wider text-sm uppercase font-bold">Inaugurar Crónica</span>
+                        <span className="text-xs text-neutral-600 group-hover:text-neutral-400 mt-2">Añadir nueva historia</span>
                     </button>
                 )}
 
-                {/* Mensaje cuando no hay resultados */}
+                {/* Mensaje Vacío Filtro */}
                 {filteredSagas.length === 0 && sagas.length > 0 && (
-                    <div className="col-span-full text-center py-16 bg-neutral-900/30 rounded-lg border border-neutral-800">
-                        <div className="text-6xl mb-4">🔍</div>
-                        <p className="text-xl font-serif text-neutral-500 mb-2">
-                            No se encontraron crónicas
-                        </p>
-                        <p className="text-sm text-neutral-600 mb-4">
-                            Intenta con otros términos de búsqueda
-                        </p>
-                        <button
-                            onClick={handleClearSearch}
-                            className="text-red-500 hover:text-red-400 text-sm underline"
-                        >
-                            Limpiar filtros
-                        </button>
+                    <div className="col-span-full text-center py-16 bg-neutral-900/20 rounded-lg border border-neutral-800 border-dashed">
+                        <div className="text-4xl mb-4 opacity-50">🕸️</div>
+                        <p className="text-neutral-500 font-serif">No se encontraron resultados en los archivos.</p>
+                        <button onClick={handleClearSearch} className="mt-2 text-blood hover:underline text-sm">Limpiar búsqueda</button>
                     </div>
                 )}
 
-                {/* Mensaje cuando no hay crónicas */}
-                {sagas.length === 0 && (
-                    <div className="col-span-full text-center py-20 bg-gradient-to-br from-neutral-900/50 to-black rounded-lg border border-red-900/20">
-                        <div className="text-7xl mb-4">📖</div>
-                        <p className="text-2xl font-serif text-neutral-500 mb-2">
-                            Aún no hay crónicas
-                        </p>
-                        <p className="text-sm text-neutral-600 mb-6">
-                            {canCreateEdit 
-                                ? 'Comienza creando tu primera crónica de Vampiro la Mascarada' 
-                                : 'No hay crónicas disponibles en este momento'}
-                        </p>
-                        {canCreateEdit && (
-                            <button
-                                onClick={() => { setEditingSaga(null); setShowModal(true); }}
-                                className="px-6 py-3 bg-red-900 hover:bg-red-800 text-white rounded-lg transition-colors inline-flex items-center gap-2"
-                            >
-                                <Icons.Plus className="w-5 h-5" />
-                                Crear Primera Crónica
-                            </button>
-                        )}
+                {/* Mensaje Vacío Total */}
+                {sagas.length === 0 && !loading && (
+                    <div className="col-span-full text-center py-20">
+                        <div className="text-6xl mb-6 opacity-30 grayscale">🏰</div>
+                        <p className="text-xl font-serif text-neutral-500">Los archivos están vacíos.</p>
+                        {canCreateEdit && <p className="text-sm text-neutral-600 mt-2">Sé el primero en documentar la historia.</p>}
                     </div>
                 )}
 
-                {/* Cards de Crónicas */}
+                {/* Tarjetas de Crónicas */}
                 {filteredSagas.map(saga => (
                     <div 
                         key={saga.id} 
-                        className="relative group h-80 rounded-lg overflow-hidden border border-neutral-800 hover:border-red-600/50 transition-all shadow-lg bg-black hover:shadow-red-900/20 hover:shadow-2xl"
+                        className="relative group h-80 rounded-lg overflow-hidden border border-neutral-800 hover:border-blood/50 transition-all duration-500 shadow-lg bg-black hover:shadow-[0_0_25px_rgba(139,0,0,0.15)]"
                     >
-                        {/* Badge de Estado */}
-                        {saga.status && (
-                            <div className="absolute top-2 left-2 z-20">
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
-                                    saga.status === 'active' ? 'bg-green-900/70 text-green-300' :
-                                    saga.status === 'paused' ? 'bg-yellow-900/70 text-yellow-300' :
-                                    'bg-gray-700/70 text-gray-300'
-                                }`}>
-                                    {saga.status === 'active' ? '● Activa' :
-                                     saga.status === 'paused' ? '⏸ Pausada' : '✓ Completada'}
-                                </span>
-                            </div>
-                        )}
+                        {/* Estado (Activa/Pausada) */}
+                        <div className="absolute top-2 left-2 z-20">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border ${
+                                saga.status === 'active' ? 'bg-green-950/80 text-green-400 border-green-900' :
+                                saga.status === 'paused' ? 'bg-yellow-950/80 text-yellow-400 border-yellow-900' :
+                                'bg-neutral-800/80 text-neutral-400 border-neutral-700'
+                            }`}>
+                                {saga.status === 'active' ? '● En Curso' : saga.status === 'paused' ? '⏸ Pausada' : '✓ Finalizada'}
+                            </span>
+                        </div>
 
-                        {/* Botones de Acción (Admin) */}
-                        {user?.role === 'admin' && (
-                            <div className="absolute top-2 right-2 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-[-10px] group-hover:translate-y-0">
+                        {/* Botones Admin (Hover) */}
+                        {canCreateEdit && (
+                            <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
                                 <button 
                                     onClick={(e) => handleEditClick(e, saga)}
-                                    className="p-2 bg-neutral-900/90 backdrop-blur-sm text-yellow-500 rounded hover:bg-yellow-600 hover:text-white border border-neutral-600 transition-all shadow-lg hover:scale-110"
-                                    title="Editar crónica"
-                                    disabled={deleteLoading === saga.id}
+                                    className="p-1.5 bg-black/80 backdrop-blur-sm text-yellow-500 rounded hover:bg-yellow-600 hover:text-white border border-neutral-700 transition-colors"
+                                    title="Editar"
+                                    disabled={!!deleteLoading}
                                 >
-                                    <Icons.Edit className="w-4 h-4" />
+                                    <Icons.Edit className="w-3.5 h-3.5" />
                                 </button>
-                                <button 
-                                    onClick={(e) => handleDelete(e, saga)}
-                                    className="p-2 bg-neutral-900/90 backdrop-blur-sm text-red-500 rounded hover:bg-red-600 hover:text-white border border-neutral-600 transition-all shadow-lg hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Eliminar permanentemente"
-                                    disabled={deleteLoading === saga.id}
-                                >
-                                    {deleteLoading === saga.id ? (
-                                        <span className="inline-block animate-spin">⟳</span>
-                                    ) : (
-                                        <Icons.Trash className="w-4 h-4" />
-                                    )}
-                                </button>
+                                {isAdmin && (
+                                    <button 
+                                        onClick={(e) => handleDelete(e, saga)}
+                                        className="p-1.5 bg-black/80 backdrop-blur-sm text-red-500 rounded hover:bg-red-600 hover:text-white border border-neutral-700 transition-colors disabled:opacity-50"
+                                        title="Eliminar"
+                                        disabled={deleteLoading === saga.id}
+                                    >
+                                        {deleteLoading === saga.id ? (
+                                            <div className="animate-spin h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full"></div>
+                                        ) : (
+                                            <Icons.Trash className="w-3.5 h-3.5" />
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         )}
 
-                        {/* Enlace Principal */}
-                        <Link 
-                            to={`/chronicle/${saga.id}`} 
-                            className="block w-full h-full"
-                        >
-                            {/* Imagen de Portada */}
-                            <div className="w-full h-full relative">
+                        {/* Área Clickeable */}
+                        <Link to={`/chronicle/${saga.id}`} className="block w-full h-full relative">
+                            {/* Imagen de Fondo */}
+                            <div className="w-full h-full overflow-hidden">
                                 <img 
-                                    src={saga.cover_image || saga.image_url || 'https://via.placeholder.com/300x400/0a0a0a/333333?text=VTM'} 
-                                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700 transform group-hover:scale-110 filter grayscale group-hover:grayscale-0"
+                                    src={saga.cover_image || saga.image_url || '/images/default-cover.jpg'} 
+                                    className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-all duration-700 transform group-hover:scale-110 filter grayscale group-hover:grayscale-0"
                                     alt={saga.title}
                                     loading="lazy"
-                                    onError={(e) => {
-                                        e.target.src = 'https://via.placeholder.com/300x400/0a0a0a/333333?text=VTM';
-                                    }}
+                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600/1a0505/555?text=VTM'; }}
                                 />
-                                {/* Overlay Gradiente */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 group-hover:opacity-60 transition-opacity duration-500" />
                             </div>
                             
-                            {/* Contenido del Card */}
-                            <div className="absolute bottom-0 w-full p-4 border-t border-red-900/0 group-hover:border-red-900/50 transition-colors duration-500 bg-gradient-to-t from-black via-black/95 to-transparent">
-                                <h2 className="text-white font-serif text-xl tracking-wide drop-shadow-md mb-1 group-hover:text-red-500 transition-colors line-clamp-2">
+                            {/* Gradientes y Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent group-hover:via-black/20 transition-all duration-500" />
+                            
+                            {/* Info Texto */}
+                            <div className="absolute bottom-0 w-full p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                                <h2 className="text-white font-serif text-lg tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-1 group-hover:text-blood-bright transition-colors line-clamp-1">
                                     {saga.title}
                                 </h2>
                                 
-                                {saga.storyteller && (
-                                    <p className="text-xs text-neutral-500 mb-1">
-                                        Narrador: {saga.storyteller}
-                                    </p>
-                                )}
-                                
-                                <div className="flex items-center gap-3 text-xs text-neutral-400 font-sans">
-                                    <span>{saga.sections?.length || saga.sessions || 0} sesiones</span>
-                                    {saga.players && (
-                                        <span>• {saga.players.split(',').length} jugadores</span>
+                                <div className="flex flex-col gap-0.5 text-xs text-neutral-400 font-sans opacity-80 group-hover:opacity-100 transition-opacity">
+                                    {saga.storyteller && (
+                                        <span className="text-neutral-300 font-medium">Narrador: {saga.storyteller}</span>
                                     )}
+                                    <div className="flex items-center gap-2 mt-1 text-[10px] uppercase tracking-wider text-neutral-500">
+                                        <span>{saga.sessions || 0} Sesiones</span>
+                                        {saga.players && <span>• {saga.players.split(',').length} PJs</span>}
+                                    </div>
                                 </div>
                                 
-                                <div className="h-0.5 w-0 group-hover:w-full bg-gradient-to-r from-red-600 via-red-500 to-red-600 transition-all duration-700 mt-3"></div>
+                                {/* Barra Decorativa */}
+                                <div className="h-0.5 w-0 group-hover:w-full bg-blood mt-3 transition-all duration-700 ease-out"></div>
                             </div>
                         </Link>
                     </div>
                 ))}
             </div>
 
-            {/* Modal de Creación/Edición */}
-            <SagaModal 
-                show={showModal} 
-                onClose={handleCloseModal} 
-                onSave={handleSaveSaga} 
-                sagaToEdit={editingSaga} 
-            />
+            {/* Modal de Formulario */}
+            {canCreateEdit && (
+                <SagaModal 
+                    show={showModal} 
+                    onClose={handleCloseModal} 
+                    onSave={handleSaveSaga} 
+                    sagaToEdit={editingSaga} 
+                />
+            )}
         </div>
     );
 };

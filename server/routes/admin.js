@@ -636,5 +636,348 @@ router.get('/fix-db-structure', validateSecretKey, async (req, res) => {
         client.release();
     }
 });
+/**
+ * GET /api/users
+ * Lista todos los usuarios del sistema
+ * @requires isAdmin
+ */
+router.get('/api/users', isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                id, 
+                username, 
+                role, 
+                created_at,
+                google_id IS NOT NULL as has_google_auth
+            FROM users 
+            ORDER BY 
+                CASE role 
+                    WHEN 'admin' THEN 1 
+                    ELSE 2 
+                END,
+                username
+        `);
+        
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Error obteniendo usuarios:", err);
+        res.status(500).json({ 
+            error: "Error obteniendo usuarios", 
+            details: err.message 
+        });
+    }
+});
+
+/**
+ * PUT /api/users/:id/role
+ * Cambia el rol de un usuario
+ * @requires isAdmin
+ */
+router.put('/api/users/:id/role', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+    
+    // Validación
+    if (!['admin', 'player'].includes(role)) {
+        return res.status(400).json({ 
+            error: "Rol inválido. Debe ser 'admin' o 'player'" 
+        });
+    }
+    
+    // Prevenir que el admin se quite sus propios permisos
+    if (parseInt(id) === req.user.id && role !== 'admin') {
+        return res.status(400).json({ 
+            error: "No puedes cambiar tu propio rol de administrador" 
+        });
+    }
+    
+    try {
+        const result = await pool.query(
+            'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, username, role',
+            [role, id]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Usuario no encontrado" });
+        }
+        
+        res.json({ 
+            success: true,
+            message: `Rol actualizado correctamente`,
+            user: result.rows[0]
+        });
+    } catch (err) {
+        console.error("Error actualizando rol:", err);
+        res.status(500).json({ 
+            error: "Error actualizando rol", 
+            details: err.message 
+        });
+    }
+});
+
+/**
+ * DELETE /api/users/:id
+ * Elimina un usuario del sistema
+ * @requires isAdmin
+ */
+router.delete('/api/users/:id', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    
+    // Prevenir que el admin se elimine a sí mismo
+    if (parseInt(id) === req.user.id) {
+        return res.status(400).json({ 
+            error: "No puedes eliminar tu propia cuenta" 
+        });
+    }
+    
+    try {
+        const result = await pool.query(
+            'DELETE FROM users WHERE id = $1 RETURNING username',
+            [id]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Usuario no encontrado" });
+        }
+        
+        res.json({ 
+            success: true,
+            message: `Usuario "${result.rows[0].username}" eliminado correctamente`
+        });
+    } catch (err) {
+        console.error("Error eliminando usuario:", err);
+        res.status(500).json({ 
+            error: "Error eliminando usuario", 
+            details: err.message 
+        });
+    }
+});
+
+/**
+ * GET /api/users/:id/permissions
+ * Obtiene todos los permisos efectivos de un usuario (heredados del rol)
+ * @requires isAdmin
+ */
+router.get('/api/users/:id/permissions', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        // Obtener el rol del usuario
+        const userResult = await pool.query(
+            'SELECT role FROM users WHERE id = $1',
+            [id]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: "Usuario no encontrado" });
+        }
+        
+        const userRole = userResult.rows[0].role;
+        
+        // Obtener permisos del rol
+        const permissionsResult = await pool.query(
+            'SELECT permission, is_allowed FROM role_permissions WHERE role = $1',
+            [userRole]
+        );
+        
+        res.json({
+            role: userRole,
+            permissions: permissionsResult.rows
+        });
+    } catch (err) {
+        console.error("Error obteniendo permisos de usuario:", err);
+        res.status(500).json({ 
+            error: "Error obteniendo permisos", 
+            details: err.message 
+        });
+    }
+});
+
+/**
+ * POST /api/users/create
+ * Crea un nuevo usuario (solo admin)
+ * @requires isAdmin
+ */
+router.post('/api/users/create', isAdmin, async (req, res) => {
+    const { username, password, role } = req.body;
+    
+    // Validaciones
+    if (!username || !password) {
+        return res.status(400).json({ 
+            error: "Usuario y contraseña son requeridos" 
+        });
+    }
+    
+    if (!['admin', 'player'].includes(role)) {
+        return res.status(400).json({ 
+            error: "Rol inválido" 
+        });
+    }
+    
+    if (username.length < 3 || username.length > 50) {
+        return res.status(400).json({ 
+            error: "El usuario debe tener entre 3 y 50 caracteres" 
+        });
+    }
+    
+    if (password.length < 6) {
+        return res.status(400).json({ 
+            error: "La contraseña debe tener al menos 6 caracteres" 
+        });
+    }
+    
+    try {
+        // Verificar si el usuario ya existe
+        const existing = await pool.query(
+            'SELECT id FROM users WHERE LOWER(username) = LOWER($1)',
+            [username]
+        );
+        
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ 
+                error: "El usuario ya existe" 
+            });
+        }
+        
+        // Crear el usuario
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const result = await pool.query(
+            'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role, created_at',
+            [username, hashedPassword, role]
+        );
+        
+        res.status(201).json({
+            success: true,
+            message: "Usuario creado correctamente",
+            user: result.rows[0]
+        });
+    } catch (err) {
+        console.error("Error creando usuario:", err);
+        res.status(500).json({ 
+            error: "Error creando usuario", 
+            details: err.message 
+        });
+    }
+});
+
+/**
+ * POST /api/permissions/init
+ * Inicializa la tabla de permisos con valores por defecto COMPLETOS
+ * @requires isAdmin
+ */
+router.post('/api/permissions/init', isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        // 1. Crear tabla si no existe
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS role_permissions (
+                role VARCHAR(50) NOT NULL,
+                permission VARCHAR(100) NOT NULL,
+                is_allowed BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (role, permission)
+            );
+        `);
+        
+        // 2. Crear índice para búsquedas rápidas
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_role_permissions_role 
+            ON role_permissions(role);
+        `);
+        
+        // 3. PERMISOS COMPLETOS - Configuración por defecto
+        const permissions = [
+            // === ADMIN: TIENE TODO ===
+            // Gestión de usuarios
+            { role: 'admin', permission: 'manage_users', allowed: true },
+            
+            // Crónicas
+            { role: 'admin', permission: 'view_chronicles', allowed: true },
+            { role: 'admin', permission: 'edit_chronicles', allowed: true },
+            { role: 'admin', permission: 'delete_chronicles', allowed: true },
+            
+            // Personajes
+            { role: 'admin', permission: 'view_characters', allowed: true },
+            { role: 'admin', permission: 'create_characters', allowed: true },
+            { role: 'admin', permission: 'edit_characters', allowed: true },
+            { role: 'admin', permission: 'delete_characters', allowed: true },
+            { role: 'admin', permission: 'view_hidden', allowed: true },
+            
+            // Lore
+            { role: 'admin', permission: 'view_lore', allowed: true },
+            { role: 'admin', permission: 'manage_lore', allowed: true },
+            { role: 'admin', permission: 'delete_lore', allowed: true },
+            
+            // Sistema
+            { role: 'admin', permission: 'upload_files', allowed: true },
+            { role: 'admin', permission: 'export_data', allowed: true },
+            { role: 'admin', permission: 'import_data', allowed: true },
+            { role: 'admin', permission: 'manage_permissions', allowed: true },
+            
+            // === PLAYER: PERMISOS BÁSICOS ===
+            // Gestión de usuarios
+            { role: 'player', permission: 'manage_users', allowed: false },
+            
+            // Crónicas
+            { role: 'player', permission: 'view_chronicles', allowed: true },
+            { role: 'player', permission: 'edit_chronicles', allowed: false },
+            { role: 'player', permission: 'delete_chronicles', allowed: false },
+            
+            // Personajes
+            { role: 'player', permission: 'view_characters', allowed: true },
+            { role: 'player', permission: 'create_characters', allowed: true },
+            { role: 'player', permission: 'edit_characters', allowed: false }, // Solo sus propios personajes
+            { role: 'player', permission: 'delete_characters', allowed: false },
+            { role: 'player', permission: 'view_hidden', allowed: false },
+            
+            // Lore
+            { role: 'player', permission: 'view_lore', allowed: true },
+            { role: 'player', permission: 'manage_lore', allowed: false },
+            { role: 'player', permission: 'delete_lore', allowed: false },
+            
+            // Sistema
+            { role: 'player', permission: 'upload_files', allowed: false },
+            { role: 'player', permission: 'export_data', allowed: false },
+            { role: 'player', permission: 'import_data', allowed: false },
+            { role: 'player', permission: 'manage_permissions', allowed: false },
+        ];
+        
+        // 4. Insertar todos los permisos
+        let insertedCount = 0;
+        for (const p of permissions) {
+            const result = await client.query(
+                `INSERT INTO role_permissions (role, permission, is_allowed) 
+                 VALUES ($1, $2, $3) 
+                 ON CONFLICT (role, permission) DO NOTHING
+                 RETURNING *`,
+                [p.role, p.permission, p.allowed]
+            );
+            if (result.rows.length > 0) insertedCount++;
+        }
+        
+        await client.query('COMMIT');
+        
+        res.json({ 
+            success: true, 
+            message: "Sistema de permisos inicializado correctamente",
+            total_permissions: permissions.length,
+            newly_created: insertedCount,
+            roles_configured: ['admin', 'player']
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Error inicializando permisos:", err);
+        res.status(500).json({ 
+            error: "Error inicializando permisos", 
+            details: err.message 
+        });
+    } finally {
+        client.release();
+    }
+});
 
 module.exports = router;

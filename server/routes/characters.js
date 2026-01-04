@@ -2,26 +2,13 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const cloudinary = require('../config/cloudinary');
-
-// ==========================================
-// MIDDLEWARES
-// ==========================================
-
-const isAuth = (req, res, next) => {
-    if (req.isAuthenticated()) return next();
-    res.status(401).json({ error: "No logueado" });
-};
-
-const isAdmin = (req, res, next) => {
-    if (req.isAuthenticated() && req.user.role === 'admin') return next();
-    res.status(403).json({ error: "Solo Admin" });
-};
+const { isAuth, isAdmin, checkPermission } = require('../middlewares/auth');
 
 // ==========================================
 // RUTAS PRINCIPALES
 // ==========================================
 
-// GET: Listar Personajes
+// GET: Listar Personajes (público, todos pueden ver)
 router.get('/', async (req, res) => {
     try {
         const isUserAdmin = req.isAuthenticated() && req.user.role === 'admin';
@@ -40,7 +27,7 @@ router.get('/', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET: Obtener personaje individual
+// GET: Obtener personaje individual (público)
 router.get('/:id', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM characters WHERE id = $1 AND is_deleted = false', [req.params.id]);
@@ -62,8 +49,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST: Crear Personaje Completo
-router.post('/', isAuth, async (req, res) => {
+// POST: Crear Personaje - REQUIERE PERMISO
+router.post('/', isAuth, checkPermission('create_characters'), async (req, res) => {
     let { 
         name, clan, generation, type, image_url, 
         predator_type, is_hidden, creature_type,
@@ -85,7 +72,6 @@ router.post('/', isAuth, async (req, res) => {
             image_url = uploadRes.secure_url;
         }
 
-        // Convertir objetos/arrays a JSON
         const disciplinesString = JSON.stringify(disciplines || []);
         const attributesString = JSON.stringify(attributes || {});
         const skillsString = JSON.stringify(skills || {});
@@ -126,8 +112,8 @@ router.post('/', isAuth, async (req, res) => {
     }
 });
 
-// PUT: Editar Personaje Completo
-router.put('/:id', isAuth, async (req, res) => {
+// PUT: Editar Personaje - REQUIERE PERMISO
+router.put('/:id', isAuth, checkPermission('edit_characters'), async (req, res) => {
     const { id } = req.params;
     let { 
         name, clan, generation, type, image_url, predator_type, 
@@ -142,29 +128,23 @@ router.put('/:id', isAuth, async (req, res) => {
     
     const check = await pool.query('SELECT created_by FROM characters WHERE id = $1', [id]);
     if (check.rows.length === 0) return res.status(404).json({ error: "No encontrado" });
+    
+    // Solo admin o el creador pueden editar
     if (req.user.role !== 'admin' && check.rows[0].created_by !== req.user.username) {
         return res.status(403).json({ error: "No es tu personaje" });
     }
 
     try {
-        // Convertir a JSON
         const disciplinesString = JSON.stringify(disciplines || []);
         const attributesString = JSON.stringify(attributes || {});
         const skillsString = JSON.stringify(skills || {});
         const advantagesString = JSON.stringify(advantages || []);
         const convictionsString = JSON.stringify(convictions || []);
         
-        // Función para convertir valores a enteros o null
         const toIntOrNull = (val) => {
             if (val === '' || val === null || val === undefined) return null;
             const parsed = parseInt(val);
             return isNaN(parsed) ? null : parsed;
-        };
-
-        // Función para limpiar strings (no permite strings vacíos, los convierte a null)
-        const cleanString = (val) => {
-            if (val === '' || val === null || val === undefined) return null;
-            return val;
         };
         
         const result = await pool.query(
@@ -180,42 +160,20 @@ router.put('/:id', isAuth, async (req, res) => {
                 ban_attributes=$34, total_experience=$35, spent_experience=$36
              WHERE id=$37 RETURNING *`,
             [
-                name || null, 
-                clan || null, 
-                toIntOrNull(generation), 
-                type || 'NPC', 
-                image_url || null, 
-                predator_type || null,
-                is_hidden || false, 
-                creature_type || 'vampire', 
-                player_name || null,
-                sire || null, 
-                toIntOrNull(age), 
-                toIntOrNull(apparent_age), 
-                date_of_birth || null, 
-                date_of_embrace || null,
-                ambition || null, 
-                desire || null, 
-                chronicle_tenets || null, 
-                touchstone || null, 
-                convictionsString, 
-                toIntOrNull(humanity) || 7, 
-                toIntOrNull(health) || 0, 
-                toIntOrNull(willpower) || 0, 
-                toIntOrNull(blood_potency) || 0,
-                attributesString, 
-                skillsString, 
-                disciplinesString, 
-                advantagesString,
-                resonance || null, 
-                toIntOrNull(hunger) || 1,
-                appearance || null, 
-                personality || null, 
-                background || null, 
-                notes || null,
-                ban_attributes || null, 
-                toIntOrNull(total_experience) || 0, 
-                toIntOrNull(spent_experience) || 0,
+                name || null, clan || null, toIntOrNull(generation), 
+                type || 'NPC', image_url || null, predator_type || null,
+                is_hidden || false, creature_type || 'vampire', player_name || null,
+                sire || null, toIntOrNull(age), toIntOrNull(apparent_age), 
+                date_of_birth || null, date_of_embrace || null,
+                ambition || null, desire || null, chronicle_tenets || null, 
+                touchstone || null, convictionsString, 
+                toIntOrNull(humanity) || 7, toIntOrNull(health) || 0, 
+                toIntOrNull(willpower) || 0, toIntOrNull(blood_potency) || 0,
+                attributesString, skillsString, disciplinesString, advantagesString,
+                resonance || null, toIntOrNull(hunger) || 1,
+                appearance || null, personality || null, background || null, 
+                notes || null, ban_attributes || null, 
+                toIntOrNull(total_experience) || 0, toIntOrNull(spent_experience) || 0,
                 id
             ]
         );
@@ -226,12 +184,13 @@ router.put('/:id', isAuth, async (req, res) => {
     }
 });
 
-// DELETE: Borrado suave
-router.delete('/:id', isAuth, async (req, res) => {
+// DELETE: Borrado suave - REQUIERE PERMISO
+router.delete('/:id', isAuth, checkPermission('delete_characters'), async (req, res) => {
     try {
         const check = await pool.query('SELECT created_by FROM characters WHERE id = $1', [req.params.id]);
         if (check.rows.length === 0) return res.status(404).json({ error: "No encontrado" });
 
+        // Solo admin o el creador pueden eliminar
         if (req.user.role !== 'admin' && check.rows[0].created_by !== req.user.username) {
             return res.status(403).json({ error: "No autorizado" });
         }

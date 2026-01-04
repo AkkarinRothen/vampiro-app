@@ -4,22 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VTM 5E - Portal de Crónica</title>
+    <!-- Estilos -->
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.2/dist/darkly/bootstrap.min.css" rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Roboto+Condensed:wght@300;400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    
+    <style>
+        /* Estilos específicos para ocultar elementos protegidos */
+        .admin-only {
+            display: none !important; /* Oculto por defecto */
+        }
+        
+        /* Cuando el body tiene la clase 'role-admin' o 'role-storyteller', se muestran */
+        body.role-admin .admin-only,
+        body.role-storyteller .admin-only {
+            display: inline-block !important; /* O flex/block según corresponda */
+        }
+        
+        /* Ajustes específicos para contenedores flex */
+        body.role-admin div.admin-only,
+        body.role-storyteller div.admin-only {
+            display: block !important;
+        }
+    </style>
 </head>
 <body>
 
     <!-- ==========================================
          PANTALLA DE LOGIN
          ========================================== -->
-    <div id="login-screen" class="justify-content-center align-items-center">
+    <div id="login-screen" class="justify-content-center align-items-center" style="display: flex; min-height: 100vh;">
         <div class="card bg-dark text-white p-4 shadow-lg" style="width: 380px;">
             <div class="text-center mb-4">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Vampire-_The_Masquerade_%28Logo%29.svg/960px-Vampire-_The_Masquerade_%28Logo%29.svg.png" width="100" class="mb-2" style="filter: drop-shadow(0 0 5px #ffffff);">
-                <h2 id="login-title" class="text-blood fw-bold">VTM 5E</h2>
+                <h2 id="login-title" class="text-danger fw-bold" style="font-family: 'Cinzel', serif;">VTM 5E</h2>
                 <small class="text-muted">Gestor de Crónica</small>
             </div>
             
@@ -58,10 +77,10 @@
     <div id="app-screen" class="fade-in" style="display: none;">
         
         <!-- NAVBAR -->
-        <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-black border-bottom border-danger sticky-top">
             <div class="container-fluid px-4">
-                <a class="navbar-brand text-blood fw-bold d-flex align-items-center" href="#" data-action="switchView" data-params='["view-sagas"]'>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Vampire-_The_Masquerade_%28Logo%29.svg/960px-Vampire-_The_Masquerade_%28Logo%29.svg.png" width="25" class="me-2">
+                <a class="navbar-brand text-danger fw-bold d-flex align-items-center" href="#" data-action="switchView" data-params='["view-sagas"]' style="font-family: 'Cinzel', serif;">
+                    <i class="fa-solid fa-skull me-2"></i>
                     VTM 5E
                 </a>
                 
@@ -71,23 +90,24 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav me-auto">
                         <li class="nav-item">
-                            <a class="nav-link active" data-action="switchView" data-params='["view-sagas"]'>Sagas</a>
+                            <a class="nav-link active" data-action="switchView" data-params='["view-sagas"]'><i class="fa-solid fa-book-dead me-1"></i> Sagas</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-action="switchView" data-params='["view-characters"]'>Cargar PJ</a>
+                            <a class="nav-link" data-action="switchView" data-params='["view-characters"]'><i class="fa-solid fa-user-plus me-1"></i> Crear PJ</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-action="switchView" data-params='["view-list"]'>Mis Personajes</a>
+                            <a class="nav-link" data-action="switchView" data-params='["view-list"]'><i class="fa-solid fa-users me-1"></i> Personajes</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-action="switchView" data-params='["view-lore"]'>Archivos</a>
+                            <a class="nav-link" data-action="switchView" data-params='["view-lore"]'><i class="fa-solid fa-scroll me-1"></i> Archivos</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-action="switchView" data-params='["view-rules"]'>Reglas</a>
+                            <a class="nav-link" data-action="switchView" data-params='["view-rules"]'><i class="fa-solid fa-scale-balanced me-1"></i> Reglas</a>
                         </li>
                     </ul>
                     <span class="navbar-text small text-muted me-3" id="user-display">Usuario</span>
-                    <button data-action="logout" class="btn btn-outline-secondary btn-sm" style="border:none;">SALIR</button>
+                    <span class="badge bg-danger me-3" id="user-role-badge">Rol</span>
+                    <button data-action="logout" class="btn btn-outline-secondary btn-sm" style="border:none;"><i class="fa-solid fa-sign-out-alt"></i></button>
                 </div>
             </div>
         </nav>
@@ -98,7 +118,16 @@
                  VISTA: SAGAS (HOME)
                  ========================================== -->
             <div id="view-sagas" class="view-section fade-in">
-                <div class="row g-4 justify-content-center"></div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="text-danger font-cinzel">Crónicas Activas</h2>
+                    <!-- BOTÓN OCULTO PARA NO-ADMINS -->
+                    <button class="btn btn-outline-danger admin-only" data-action="showNewSagaModal">
+                        <i class="fa-solid fa-plus me-1"></i> Nueva Crónica
+                    </button>
+                </div>
+                <div id="sagas-list" class="row g-4 justify-content-center">
+                    <!-- Las sagas se inyectan aquí vía JS -->
+                </div>
             </div>
 
             <!-- ==========================================
@@ -107,7 +136,7 @@
             <div id="view-characters" class="view-section fade-in" style="display: none;">
                 <div class="row justify-content-center">
                     <div class="col-md-8">
-                        <h4 class="text-white mb-4 border-bottom border-secondary pb-2">Registro de Vástago</h4>
+                        <h4 class="text-white mb-4 border-bottom border-secondary pb-2 font-cinzel">Registro de Vástago</h4>
                         <div class="card bg-dark border border-secondary p-4 shadow">
                             <div class="row mb-3">
                                 <div class="col-md-6">
@@ -134,7 +163,7 @@
                                 </div>
                             </div>
                             <div class="mb-4">
-                                <label class="text-blood small fw-bold mb-2">Disciplinas Conocidas</label>
+                                <label class="text-danger small fw-bold mb-2">Disciplinas Conocidas</label>
                                 <div id="disciplines-container" class="p-3 border border-secondary rounded" style="background: rgba(0,0,0,0.3);"></div>
                             </div>
                             <div class="row mb-4">
@@ -149,7 +178,8 @@
                                     <label class="text-muted small">Categoría</label>
                                     <select id="type" class="form-select znk-input">
                                         <option value="PC">Jugador (PC)</option>
-                                        <option value="NPC">Narrador (NPC)</option>
+                                        <!-- Opción NPC solo visible para admins si quisieras refinar -->
+                                        <option value="NPC" class="admin-only">Narrador (NPC)</option>
                                     </select>
                                 </div>
                             </div>
@@ -163,10 +193,10 @@
                  VISTA: LISTA DE PERSONAJES
                  ========================================== -->
             <div id="view-list" class="view-section fade-in" style="display: none;">
-                <h4 class="text-blood border-bottom border-secondary pb-2 mb-4">Coterie & Aliados</h4>
+                <h4 class="text-danger border-bottom border-secondary pb-2 mb-4 font-cinzel">Coterie & Aliados</h4>
                 <div id="pc-list" class="row g-4 mb-5"></div>
                 
-                <h4 class="text-warning border-bottom border-secondary pb-2 mb-4">Antagonistas & NPCs</h4>
+                <h4 class="text-warning border-bottom border-secondary pb-2 mb-4 font-cinzel">Antagonistas & NPCs</h4>
                 <div id="npc-list" class="row g-4"></div>
                 
                 <div id="graveyard-section" class="mt-5 pt-4 border-top border-secondary" style="display:none;">
@@ -179,12 +209,15 @@
                  VISTA: ARCHIVOS DE LORE
                  ========================================== -->
             <div id="view-lore" class="view-section fade-in" style="display: none;">
-                <h2 class="text-blood mb-4">Archivos de la Ciudad</h2>
+                <h2 class="text-danger mb-4 font-cinzel">Archivos de la Ciudad</h2>
                 <div class="row">
                     <div class="col-md-4 mb-4">
-                        <button data-action="showLoreForm" class="btn btn-danger w-100 mb-3 fw-bold">Nuevo Documento</button>
+                        <!-- BOTÓN OCULTO PARA NO-ADMINS -->
+                        <button data-action="showLoreForm" class="btn btn-danger w-100 mb-3 fw-bold admin-only">
+                            <i class="fa-solid fa-feather-pointed me-1"></i> Nuevo Documento
+                        </button>
                         
-                        <div id="lore-form-card" class="card p-3 mb-3 border-blood" style="display:none; background: #111;">
+                        <div id="lore-form-card" class="card p-3 mb-3 border-danger admin-only" style="display:none; background: #111;">
                             <input type="hidden" id="lore-id">
                             <input type="text" id="lore-title" class="form-control znk-input mb-2" placeholder="Título (ej. Sesión 1)">
                             <select id="lore-cat" class="form-select znk-input mb-2">
@@ -217,7 +250,7 @@
                  ========================================== -->
             <div id="view-rules" class="view-section fade-in" style="display: none;">
                 <div class="card p-5">
-                    <h2 class="text-blood">Reglas de la Casa</h2>
+                    <h2 class="text-danger font-cinzel">Reglas de la Casa</h2>
                     <hr class="border-secondary">
                     <ul>
                         <li class="mb-2">Los fallos bestiales ocurren con 1 en dados de hambre.</li>
@@ -231,25 +264,36 @@
                  VISTA: DETALLE DE CRÓNICA
                  ========================================== -->
             <div id="view-chronicle-detail" class="view-section fade-in" style="display: none;">
-                <div class="chronicle-header mb-5">
-                    <h1 id="detail-title" class="text-warning ms-3 m-0">Título</h1>
-                    <div class="d-flex align-items-center me-3">
-                        <div id="detail-roster" class="d-flex"></div>
-                        <button id="btn-add-char" data-action="openRosterModal" class="btn btn-sm btn-outline-warning ms-3 rounded-circle" style="width: 40px; height: 40px;">+</button>
+                <div class="chronicle-header mb-5 d-flex justify-content-between align-items-center border-bottom border-danger pb-3">
+                    <div class="d-flex align-items-center">
+                        <h1 id="detail-title" class="text-warning m-0 font-cinzel">Título</h1>
+                    </div>
+                    
+                    <div class="d-flex align-items-center">
+                        <div id="detail-roster" class="d-flex me-3"></div>
+                        <!-- BOTÓN OCULTO PARA NO-ADMINS -->
+                        <button id="btn-add-char" data-action="openRosterModal" class="btn btn-sm btn-outline-warning rounded-circle admin-only" style="width: 40px; height: 40px;">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
                     </div>
                 </div>
-                <div id="detail-content" class="container"></div>
                 
-                <!-- Panel de Narrador -->
-                <div id="admin-story-controls" class="text-center mt-5 mb-5 p-4 border border-secondary" style="border-style: dashed !important; display:none;">
-                    <h4 class="text-muted">Narrador: Agregar Evento</h4>
+                <div id="detail-content" class="container">
+                    <!-- Secciones de la historia se cargan aquí -->
+                </div>
+                
+                <!-- Panel de Narrador (OCULTO PARA PLAYERS) -->
+                <div id="admin-story-controls" class="text-center mt-5 mb-5 p-4 border border-secondary admin-only" style="border-style: dashed !important;">
+                    <h4 class="text-muted mb-3"><i class="fa-solid fa-pen-nib me-2"></i>Narrador: Agregar Evento</h4>
                     <input type="text" id="new-section-title" class="form-control znk-input mb-2" placeholder="Título">
                     <textarea id="new-section-text" class="form-control znk-input mb-2" rows="4" placeholder="Descripción..."></textarea>
                     <div class="input-group mb-3">
                         <input type="file" id="new-section-file" class="form-control znk-input" accept="image/*">
                         <input type="text" id="new-section-url" class="form-control znk-input" placeholder="O URL...">
                     </div>
-                    <button data-action="addStorySection" class="btn btn-danger">Escribir en la Historia</button>
+                    <button data-action="addStorySection" class="btn btn-danger w-100">
+                        <i class="fa-solid fa-floppy-disk me-2"></i> Escribir en la Historia
+                    </button>
                 </div>
             </div>
 
@@ -303,48 +347,73 @@
     </div>
 
     <!-- Modal: Crear/Editar crónica -->
- <div class="modal fade" id="chronicle-modal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-white">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title" id="chronicle-modal-title">Nueva Crónica</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="chronicle-id">
-                <input type="hidden" id="chronicle-old-img">
-                
-                <div class="mb-3">
-                    <label class="form-label">Título</label>
-                    <input type="text" class="form-control" id="chronicle-title" placeholder="Nombre de la crónica">
+    <div class="modal fade" id="chronicle-modal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white border-danger">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-danger" id="chronicle-modal-title">Nueva Crónica</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                
-                <!-- Preview de imagen actual -->
-                <div id="chronicle-img-preview"></div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Subir Imagen</label>
-                    <input type="file" class="form-control" id="chronicle-file" accept="image/*">
+                <div class="modal-body">
+                    <input type="hidden" id="chronicle-id">
+                    <input type="hidden" id="chronicle-old-img">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Título</label>
+                        <input type="text" class="form-control znk-input" id="chronicle-title" placeholder="Nombre de la crónica">
+                    </div>
+                    
+                    <!-- Preview de imagen actual -->
+                    <div id="chronicle-img-preview" class="mb-3 text-center"></div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Subir Imagen</label>
+                        <input type="file" class="form-control znk-input" id="chronicle-file" accept="image/*">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted">O URL de Imagen</label>
+                        <input type="text" class="form-control znk-input" id="chronicle-url" placeholder="https://...">
+                    </div>
                 </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">O URL de Imagen</label>
-                    <input type="text" class="form-control" id="chronicle-url" placeholder="https://...">
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" 
+                            class="btn btn-danger" 
+                            data-action="submitChronicleForm">
+                        Guardar
+                    </button>
                 </div>
-            </div>
-            <div class="modal-footer border-secondary">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" 
-                        class="btn btn-blood" 
-                        data-action="submitChronicleForm">
-                    Guardar
-                </button>
             </div>
         </div>
     </div>
-</div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Tu script principal JS debe tener la lógica para añadir la clase al body -->
     <script type="module" src="./js/main.js"></script>
+    
+    <script>
+        // PEQUEÑO SCRIPT DE AYUDA PARA LA LÓGICA DE CLASES
+        // Esto se debería integrar idealmente en main.js, pero sirve aquí como pegamento
+        document.addEventListener('DOMContentLoaded', () => {
+            // Escuchar eventos personalizados si tu app los emite, o interceptar
+            // la función de renderizado de usuario.
+            
+            // Ejemplo de función que deberías llamar cuando el usuario se loguea:
+            window.updateUserRole = (role) => {
+                document.body.classList.remove('role-admin', 'role-storyteller', 'role-player');
+                if (role) {
+                    document.body.classList.add(`role-${role}`);
+                    
+                    const badge = document.getElementById('user-role-badge');
+                    if (badge) {
+                        badge.textContent = role === 'admin' ? 'Príncipe' : (role === 'storyteller' ? 'Narrador' : 'Vástago');
+                        badge.className = `badge me-3 ${role === 'admin' ? 'bg-warning text-dark' : (role === 'storyteller' ? 'bg-info text-dark' : 'bg-secondary')}`;
+                    }
+                }
+            };
+        });
+    </script>
 </body>
 </html>

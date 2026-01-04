@@ -1,0 +1,163 @@
+/* ============================================
+   TOAST ANIMATIONS
+   Añade esto a tu archivo CSS principal o index.css
+   ============================================ */
+
+/* Animación de entrada desde la derecha */
+@keyframes slide-in-right {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Animación de salida hacia la derecha */
+@keyframes slide-out-right {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+}
+
+/* Animación de fade in general */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Animación de scale para badges */
+@keyframes scale-in {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Clases de utilidad */
+.animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-slide-out-right {
+    animation: slide-out-right 0.2s ease-in forwards;
+}
+
+.animate-fade-in {
+    animation: fade-in 0.4s ease-out;
+}
+
+.animate-scale-in {
+    animation: scale-in 0.3s ease-out;
+}
+
+/* Pulse para indicadores activos */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Glow effect para elementos importantes */
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(220, 38, 38, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(220, 38, 38, 0.8), 
+                    0 0 30px rgba(220, 38, 38, 0.6);
+    }
+}
+
+.animate-glow {
+    animation: glow 2s ease-in-out infinite;
+}
+
+/* Hover effects mejorados */
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Loading spinner */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* ============================================
+   SI USAS TAILWIND, añade esto a tailwind.config.js:
+   ============================================ */
+
+/*
+module.exports = {
+  theme: {
+    extend: {
+      animation: {
+        'slide-in-right': 'slide-in-right 0.3s ease-out',
+        'slide-out-right': 'slide-out-right 0.2s ease-in forwards',
+        'fade-in': 'fade-in 0.4s ease-out',
+        'scale-in': 'scale-in 0.3s ease-out',
+        'glow': 'glow 2s ease-in-out infinite',
+      },
+      keyframes: {
+        'slide-in-right': {
+          'from': { transform: 'translateX(120%)', opacity: '0' },
+          'to': { transform: 'translateX(0)', opacity: '1' }
+        },
+        'slide-out-right': {
+          'from': { transform: 'translateX(0)', opacity: '1' },
+          'to': { transform: 'translateX(120%)', opacity: '0' }
+        },
+        'fade-in': {
+          'from': { opacity: '0' },
+          'to': { opacity: '1' }
+        },
+        'scale-in': {
+          'from': { transform: 'scale(0.9)', opacity: '0' },
+          'to': { transform: 'scale(1)', opacity: '1' }
+        },
+        'glow': {
+          '0%, 100%': { boxShadow: '0 0 5px rgba(220, 38, 38, 0.5)' },
+          '50%': { 
+            boxShadow: '0 0 20px rgba(220, 38, 38, 0.8), 0 0 30px rgba(220, 38, 38, 0.6)' 
+          }
+        }
+      }
+    }
+  }
+}

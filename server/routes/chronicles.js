@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
-// Importar Middlewares
-// Asegúrate de que este archivo existe en server/middlewares/auth.js
-const { isAdmin } = require('../middlewares/auth');
+// [SEGURIDAD] Importamos el middleware de permisos dinámicos
+// checkPermission valida contra la base de datos (tabla role_permissions)
+const { checkPermission } = require('../middlewares/auth');
 
 // Importar Controladores
 const chronicleCtrl = require('../controllers/chronicleController');
@@ -11,45 +11,63 @@ const sectionCtrl = require('../controllers/sectionController');
 const glossaryCtrl = require('../controllers/glossaryController');
 
 // ==========================================
-// RUTAS DE CRÓNICAS (CRUD BÁSICO)
+// 1. CRÓNICAS: GESTIÓN PRINCIPAL (CRUD)
 // ==========================================
+
+// Leer (Público o restringido según prefieras)
 router.get('/', chronicleCtrl.getAll);
 router.get('/:id', chronicleCtrl.getById);
-router.post('/', isAdmin, chronicleCtrl.create);
-router.put('/:id', isAdmin, chronicleCtrl.update);
-router.delete('/:id', isAdmin, chronicleCtrl.remove);
+
+// Crear y Editar: Requiere permiso 'edit_chronicles'
+// Permite a Narradores y Admins crear historias
+router.post('/', checkPermission('edit_chronicles'), chronicleCtrl.create);
+router.put('/:id', checkPermission('edit_chronicles'), chronicleCtrl.update);
+
+// Eliminar: Requiere permiso ESPECÍFICO 'delete_chronicles'
+// Esto es más seguro que usar isAdmin, ya que puedes revocarlo temporalmente
+router.delete('/:id', checkPermission('delete_chronicles'), chronicleCtrl.remove);
 
 // ==========================================
-// GESTIÓN DE PERSONAJES (VINCULACIÓN)
+// 2. GESTIÓN DE JUGADORES (ROSTER)
 // ==========================================
-router.post('/:id/join', isAdmin, chronicleCtrl.addCharacter);
-router.delete('/:id/roster/:charId', isAdmin, chronicleCtrl.removeCharacter);
+// Vincular personajes a la crónica (PC/NPC)
+router.post('/:id/join', checkPermission('edit_chronicles'), chronicleCtrl.addCharacter);
+
+// Expulsar personajes de la crónica
+router.delete('/:id/roster/:charId', checkPermission('edit_chronicles'), chronicleCtrl.removeCharacter);
 
 // ==========================================
-// SECCIONES / CAPÍTULOS
+// 3. GESTIÓN DE CAPÍTULOS (SECCIONES)
 // ==========================================
-// Crear y Editar
-router.post('/:id/sections', isAdmin, sectionCtrl.createSection);
-router.put('/sections/:id', isAdmin, sectionCtrl.updateSection);
-router.delete('/sections/:id', isAdmin, sectionCtrl.deleteSection);
+// Crear, Editar y Borrar secciones (texto, imágenes) de la historia
+router.post('/:id/sections', checkPermission('edit_chronicles'), sectionCtrl.createSection);
+router.put('/sections/:id', checkPermission('edit_chronicles'), sectionCtrl.updateSection);
+router.delete('/sections/:id', checkPermission('edit_chronicles'), sectionCtrl.deleteSection);
 
-// Reordenamiento
-router.put('/:id/sections/reorder', isAdmin, sectionCtrl.reorderSections); // Drag & Drop masivo
-router.put('/sections/:id/move-up', isAdmin, sectionCtrl.moveUp);          // Mover uno arriba
-router.put('/sections/:id/move-down', isAdmin, sectionCtrl.moveDown);      // Mover uno abajo
+// Reordenamiento de capítulos (Drag & Drop)
+router.put('/:id/sections/reorder', checkPermission('edit_chronicles'), sectionCtrl.reorderSections);
+router.put('/sections/:id/move-up', checkPermission('edit_chronicles'), sectionCtrl.moveUp);
+router.put('/sections/:id/move-down', checkPermission('edit_chronicles'), sectionCtrl.moveDown);
 
 // ==========================================
-// GLOSARIO / WIKI
+// 4. GLOSARIO Y LORE VINCULADO
 // ==========================================
+// Leer el glosario es público para los jugadores de la crónica
 router.get('/:id/glossary', glossaryCtrl.getGlossary);
-router.post('/:id/glossary', isAdmin, glossaryCtrl.upsertTerm);
-router.delete('/:id/glossary/:termId', isAdmin, glossaryCtrl.deleteTerm);
+
+// Gestión de términos: Usamos 'manage_lore' para mayor granularidad.
+// Así un 'Ayudante de Lore' podría editar el glosario sin poder tocar la crónica principal.
+router.post('/:id/glossary', checkPermission('manage_lore'), glossaryCtrl.upsertTerm);
+router.delete('/:id/glossary/:termId', checkPermission('manage_lore'), glossaryCtrl.deleteTerm);
 
 // ==========================================
-// MANTENIMIENTO
+// 5. RUTAS DE MANTENIMIENTO
 // ==========================================
 router.get('/update-db-schema-full', async (req, res) => {
-    res.status(501).json({ message: "Por favor utiliza el script de migración del servidor." });
+    // Bloqueado por defecto en producción
+    res.status(501).json({ 
+        message: "Ruta de migración manual deshabilitada por seguridad. Use los scripts del servidor." 
+    });
 });
 
 module.exports = router;

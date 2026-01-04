@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaEdit, FaTrash, FaUserPlus, FaTimes, FaPlus, FaArrowLeft } from 'react-icons/fa';
 
-// Importamos los componentes modulares
 import ChronicleSection from './ChronicleSection';
 import SectionForm from './SectionForm';
 
@@ -10,28 +9,25 @@ const SagaDetail = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
     
-    // --- ESTADOS DE DATOS ---
     const [chronicle, setChronicle] = useState(null);
     const [sections, setSections] = useState([]);
     const [roster, setRoster] = useState([]);
     const [allCharacters, setAllCharacters] = useState([]);
     
-    // --- ESTADOS DE UI ---
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     
-    // UI: Edición de Portada/Título
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editData, setEditData] = useState({ title: '', cover_image: '' });
     
-    // UI: Gestión de Secciones (Capítulos)
     const [showSectionForm, setShowSectionForm] = useState(false);
     const [editingSection, setEditingSection] = useState(null);
     
-    // UI: Gestión del Roster (Personajes)
     const [showAddChar, setShowAddChar] = useState(false);
     const [selectedCharToAdd, setSelectedCharToAdd] = useState('');
 
+    // 🔒 VERIFICACIÓN DE PERMISOS
+    const canEdit = user?.role === 'admin' || user?.role === 'storyteller';
     const isAdmin = user?.role === 'admin';
 
     // ==========================================
@@ -40,7 +36,9 @@ const SagaDetail = ({ user }) => {
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await fetch(`/api/chronicles/${id}`);
+            const response = await fetch(`/api/chronicles/${id}`, {
+                credentials: 'include'
+            });
             
             if (!response.ok) throw new Error('Crónica no encontrada');
             
@@ -49,7 +47,6 @@ const SagaDetail = ({ user }) => {
             setSections(data.sections || []);
             setRoster(data.characters || []);
             
-            // Inicializar datos de edición
             setEditData({ 
                 title: data.info.title, 
                 cover_image: data.info.cover_image || '' 
@@ -65,76 +62,137 @@ const SagaDetail = ({ user }) => {
 
     useEffect(() => {
         fetchData();
-        if (isAdmin) {
-            fetch('/api/characters')
+        if (canEdit) {
+            fetch('/api/characters', { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => setAllCharacters([...(data.pcs || []), ...(data.npcs || [])]))
                 .catch(console.error);
         }
-    }, [fetchData, isAdmin]);
+    }, [fetchData, canEdit]);
 
     // ==========================================
     // 2. GESTIÓN DE CRÓNICA (Info Principal)
     // ==========================================
     const handleSaveInfo = async () => {
+        if (!canEdit) {
+            alert('No tienes permisos para editar la crónica');
+            return;
+        }
+
         if (!editData.title.trim()) return alert("El título es obligatorio");
         
         try {
             const res = await fetch(`/api/chronicles/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(editData)
             });
-            if (!res.ok) throw new Error('Error al actualizar');
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Error al actualizar');
+            }
             
             setIsEditingInfo(false);
             fetchData();
-        } catch (err) { alert(err.message); }
+        } catch (err) { 
+            alert(err.message); 
+        }
     };
 
     const handleDeleteChronicle = async () => {
+        if (!isAdmin) {
+            alert('Solo los administradores pueden eliminar crónicas');
+            return;
+        }
+
         if (!window.confirm("⚠️ ¿Borrar esta crónica y toda su historia permanentemente?")) return;
+        
         try {
-            const res = await fetch(`/api/chronicles/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Error al eliminar');
+            const res = await fetch(`/api/chronicles/${id}`, { 
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Error al eliminar');
+            }
+            
             navigate('/');
-        } catch (err) { alert(err.message); }
+        } catch (err) { 
+            alert(err.message); 
+        }
     };
 
     // ==========================================
     // 3. GESTIÓN DE PERSONAJES (Roster)
     // ==========================================
     const handleAddCharacter = async () => {
+        if (!canEdit) {
+            alert('No tienes permisos para añadir personajes');
+            return;
+        }
+
         if (!selectedCharToAdd) return;
+        
         try {
             const res = await fetch(`/api/chronicles/${id}/join`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ character_id: selectedCharToAdd })
             });
-            if (!res.ok) throw new Error('Error al agregar');
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Error al agregar');
+            }
             
             setShowAddChar(false);
             setSelectedCharToAdd('');
             fetchData();
-        } catch (err) { alert('Error al agregar personaje'); }
+        } catch (err) { 
+            alert(err.message || 'Error al agregar personaje'); 
+        }
     };
 
     const handleRemoveCharacter = async (charId) => {
+        if (!canEdit) {
+            alert('No tienes permisos para remover personajes');
+            return;
+        }
+
         if (!window.confirm("¿Sacar a este personaje de la crónica?")) return;
+        
         try {
-            const res = await fetch(`/api/chronicles/${id}/roster/${charId}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Error al remover');
+            const res = await fetch(`/api/chronicles/${id}/roster/${charId}`, { 
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Error al remover');
+            }
+            
             fetchData();
-        } catch (err) { alert('Error al remover personaje'); }
+        } catch (err) { 
+            alert(err.message || 'Error al remover personaje'); 
+        }
     };
 
     // ==========================================
     // 4. GESTIÓN DE SECCIONES (Capítulos)
     // ==========================================
     
-    // Guardar (Crear o Editar)
     const handleSaveSection = async (formData) => {
+        if (!canEdit) {
+            alert('No tienes permisos para editar secciones');
+            return;
+        }
+
         try {
             const url = editingSection
                 ? `/api/chronicles/sections/${editingSection.id}`
@@ -145,50 +203,77 @@ const SagaDetail = ({ user }) => {
             const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(formData)
             });
             
-            if (!res.ok) throw new Error('Error al guardar sección');
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Error al guardar sección');
+            }
             
             await fetchData();
             setShowSectionForm(false);
             setEditingSection(null);
         } catch (err) { 
             console.error(err);
-            alert("Error: " + err.message); 
+            alert(err.message || "Error al guardar"); 
         }
     };
 
-    // Eliminar
     const handleDeleteSection = async (secId) => {
+        if (!canEdit) return;
+
         if (!window.confirm("¿Borrar este capítulo permanentemente?")) return;
+        
         try {
-            const res = await fetch(`/api/chronicles/sections/${secId}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Error al eliminar');
+            const res = await fetch(`/api/chronicles/sections/${secId}`, { 
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Error al eliminar');
+            }
+            
             fetchData();
-        } catch (err) { alert(err.message); }
+        } catch (err) { 
+            alert(err.message); 
+        }
     };
 
-    // Mover (Reordenar)
     const handleMoveSection = async (secId, direction) => {
+        if (!canEdit) return;
+
         try {
-            const res = await fetch(`/api/chronicles/sections/${secId}/move-${direction}`, { method: 'PUT' });
+            const res = await fetch(`/api/chronicles/sections/${secId}/move-${direction}`, { 
+                method: 'PUT',
+                credentials: 'include'
+            });
+            
             if (!res.ok) {
                 const data = await res.json();
                 throw new Error(data.error || 'No se pudo mover');
             }
+            
             fetchData();
-        } catch (err) { alert(err.message); }
+        } catch (err) { 
+            alert(err.message); 
+        }
     };
 
-    // --- Auxiliares de Formulario ---
     const openNewSection = () => {
+        if (!canEdit) return;
+        
         setEditingSection(null);
         setShowSectionForm(true);
         setTimeout(() => document.getElementById('section-form-anchor')?.scrollIntoView({ behavior: 'smooth' }), 100);
     };
 
     const openEditSection = (section) => {
+        if (!canEdit) return;
+        
         setEditingSection(section);
         setShowSectionForm(true);
         setTimeout(() => document.getElementById('section-form-anchor')?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -214,12 +299,11 @@ const SagaDetail = ({ user }) => {
     return (
         <div className="min-h-screen bg-neutral-950 text-neutral-200 p-4 md:p-8 pb-24 animate-fade-in">
             
-            {/* Botón Volver (Móvil) */}
             <Link to="/" className="md:hidden fixed top-4 left-4 z-50 bg-neutral-900 p-2 rounded-full border border-neutral-700 text-neutral-400 shadow-lg">
                 <FaArrowLeft />
             </Link>
 
-            {/* --- CABECERA DE LA CRÓNICA --- */}
+            {/* --- CABECERA --- */}
             <div className="max-w-6xl mx-auto relative mb-12">
                 <div className="h-64 md:h-96 w-full overflow-hidden rounded-xl border-b-4 border-red-900 relative shadow-2xl group bg-black">
                     <img 
@@ -254,10 +338,14 @@ const SagaDetail = ({ user }) => {
                                 <h1 className="text-4xl md:text-6xl font-serif text-red-600 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] tracking-wide">
                                     {chronicle.title}
                                 </h1>
-                                {isAdmin && (
+                                {/* 🔒 BOTONES SOLO PARA QUIEN PUEDE EDITAR */}
+                                {canEdit && (
                                     <div className="flex gap-2">
                                         <button onClick={() => setIsEditingInfo(true)} className="p-3 bg-neutral-900/80 text-yellow-600 rounded-full border border-yellow-900/30 hover:bg-yellow-900/20 transition-all"><FaEdit /></button>
-                                        <button onClick={handleDeleteChronicle} className="p-3 bg-neutral-900/80 text-red-600 rounded-full border border-red-900/30 hover:bg-red-900/20 transition-all"><FaTrash /></button>
+                                        {/* Solo admin puede borrar */}
+                                        {isAdmin && (
+                                            <button onClick={handleDeleteChronicle} className="p-3 bg-neutral-900/80 text-red-600 rounded-full border border-red-900/30 hover:bg-red-900/20 transition-all"><FaTrash /></button>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -268,11 +356,11 @@ const SagaDetail = ({ user }) => {
 
             <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                {/* --- COLUMNA IZQUIERDA: HISTORIA --- */}
+                {/* --- HISTORIA --- */}
                 <div className="lg:col-span-2 space-y-12">
                     
-                    {/* Botón Agregar Sección (Solo Admin) */}
-                    {isAdmin && !showSectionForm && (
+                    {/* 🔒 BOTÓN AGREGAR - Solo si puede editar */}
+                    {canEdit && !showSectionForm && (
                         <button 
                             onClick={openNewSection}
                             className="w-full py-6 border-2 border-dashed border-neutral-800 hover:border-red-900/50 text-neutral-500 hover:text-red-500 rounded-lg flex flex-col items-center gap-2 transition-all bg-neutral-900/20 hover:bg-neutral-900/50 group"
@@ -282,9 +370,8 @@ const SagaDetail = ({ user }) => {
                         </button>
                     )}
 
-                    {/* Formulario de Sección (Modular) */}
                     <div id="section-form-anchor">
-                        {showSectionForm && (
+                        {canEdit && showSectionForm && (
                             <SectionForm 
                                 section={editingSection}
                                 onSave={handleSaveSection}
@@ -293,7 +380,6 @@ const SagaDetail = ({ user }) => {
                         )}
                     </div>
 
-                    {/* Lista de Capítulos (Modular) */}
                     <div className="space-y-12">
                         {sections.length === 0 ? (
                             <div className="text-center py-12 text-neutral-500 bg-neutral-900/20 rounded border border-neutral-800 border-dashed">
@@ -304,7 +390,7 @@ const SagaDetail = ({ user }) => {
                                 <ChronicleSection 
                                     key={sec.id}
                                     section={sec}
-                                    isAdmin={isAdmin}
+                                    isAdmin={canEdit}  // Pasamos canEdit
                                     isFirst={index === 0}
                                     isLast={index === sections.length - 1}
                                     onEdit={openEditSection}
@@ -317,20 +403,20 @@ const SagaDetail = ({ user }) => {
                     </div>
                 </div>
 
-                {/* --- COLUMNA DERECHA: DRAMATIS PERSONAE --- */}
+                {/* --- DRAMATIS PERSONAE --- */}
                 <aside className="space-y-8">
                     <div className="bg-neutral-900/50 p-6 rounded-lg border border-red-900/10 sticky top-24 shadow-xl">
                         <div className="flex justify-between items-center mb-6 border-b border-neutral-800 pb-4">
                             <h3 className="text-xl font-serif text-red-500">Dramatis Personae</h3>
-                            {isAdmin && (
+                            {/* 🔒 BOTÓN AÑADIR - Solo si puede editar */}
+                            {canEdit && (
                                 <button onClick={() => setShowAddChar(!showAddChar)} className="text-neutral-500 hover:text-red-500 transition-colors">
                                     {showAddChar ? <FaTimes /> : <FaUserPlus />}
                                 </button>
                             )}
                         </div>
 
-                        {/* Selector de Añadir Personaje */}
-                        {showAddChar && (
+                        {showAddChar && canEdit && (
                             <div className="mb-6 bg-black/40 p-3 rounded border border-neutral-700 animate-fade-in">
                                 <select 
                                     className="w-full bg-neutral-800 text-neutral-300 p-2 rounded mb-2 text-sm border border-neutral-700 focus:border-red-900 outline-none"
@@ -353,7 +439,6 @@ const SagaDetail = ({ user }) => {
                             </div>
                         )}
 
-                        {/* Lista de Personajes */}
                         <div className="space-y-3">
                             {roster.length === 0 ? (
                                 <p className="text-neutral-600 italic text-sm text-center py-4">
@@ -374,7 +459,8 @@ const SagaDetail = ({ user }) => {
                                             </div>
                                         </Link>
                                         
-                                        {isAdmin && (
+                                        {/* 🔒 BOTÓN REMOVER - Solo si puede editar */}
+                                        {canEdit && (
                                             <button onClick={() => handleRemoveCharacter(char.id)} className="text-neutral-600 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity" title="Sacar de la crónica">
                                                 <FaTimes size={12} />
                                             </button>

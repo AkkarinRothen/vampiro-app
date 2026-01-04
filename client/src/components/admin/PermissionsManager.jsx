@@ -1,20 +1,36 @@
 import { useState, useEffect } from 'react';
 import { FaLock, FaLockOpen, FaShieldAlt, FaSync, FaExclamationTriangle } from 'react-icons/fa';
+import { useToast } from '../ui/Toast'; // Importa el hook
 
 /**
  * Etiquetas legibles para cada permiso del sistema
  */
 const PERMISSION_LABELS = {
+    // === GESTIÓN DE USUARIOS ===
     manage_users: "Gestionar Usuarios",
+    
+    // === CRÓNICAS ===
+    view_chronicles: "Ver Crónicas",
     edit_chronicles: "Editar/Crear Crónicas",
-    delete_chronicles: "Borrar Crónicas",
-    view_hidden: "Ver Contenido Oculto (Lore/PJs)",
+    delete_chronicles: "Eliminar Crónicas",
+    
+    // === PERSONAJES ===
+    view_characters: "Ver Personajes",
     create_characters: "Crear Personajes",
+    edit_characters: "Editar Personajes",
     delete_characters: "Eliminar Personajes",
+    view_hidden: "Ver Contenido Oculto (Bóveda)",
+    
+    // === LORE ===
+    view_lore: "Ver Contenido de Lore",
     manage_lore: "Gestionar Lore",
-    export_data: "Exportar/Importar Datos",
-    upload_files: "Subir Imágenes",
-    view_chronicles: "Ver Crónicas"
+    delete_lore: "Eliminar Lore",
+    
+    // === SISTEMA ===
+    upload_files: "Subir Imágenes/Archivos",
+    export_data: "Exportar Datos del Sistema",
+    import_data: "Importar Datos al Sistema",
+    manage_permissions: "Gestionar Permisos de Roles"
 };
 
 /**
