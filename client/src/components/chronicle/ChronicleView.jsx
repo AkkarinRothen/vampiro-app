@@ -195,16 +195,10 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
     // --- RENDERIZADO ---
 
     return (
-        <div className="min-h-screen bg-vtm-texture text-neutral-200 pb-20 animate-fade-in relative overflow-hidden">
+        <div className="min-h-screen bg-vtm-texture text-neutral-200 pb-20 animate-fade-in">
             
-            {/* FONDO ANIMADO "MAR DE SANGRE" */}
-            <div className="ocean">
-                <div className="wave"></div>
-                <div className="wave"></div>
-            </div>
-
             {/* HERO HEADER */}
-            <div className="relative w-full h-64 md:h-80 overflow-hidden shadow-2xl border-b border-red-900/30 z-10">
+            <div className="relative w-full h-64 md:h-80 overflow-hidden shadow-2xl border-b border-red-900/30">
                 <div className="absolute inset-0 bg-black/60 z-10"></div>
                 <img 
                     src={saga?.cover_image || '/images/default-chronicle.jpg'} 
@@ -212,6 +206,12 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
                     className="w-full h-full object-cover filter blur-[2px] scale-105 z-0"
                 />
                 
+                {/* --- EFECTO OLAS DE SANGRE --- */}
+                <div className="ocean">
+                    <div className="wave"></div>
+                    <div className="wave"></div>
+                </div>
+
                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/70 to-transparent z-20 flex flex-col justify-end p-6 md:p-12 pointer-events-none">
                     <div className="container mx-auto pointer-events-auto">
                         <div className="flex justify-between items-end">
@@ -247,7 +247,7 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
                 </div>
             </div>
 
-            <div className="container mx-auto px-4 py-8 max-w-4xl relative z-10">
+            <div className="container mx-auto px-4 py-8 max-w-4xl">
                 
                 {/* BARRA DE HERRAMIENTAS MÓVIL */}
                 <div className="md:hidden mb-6 flex justify-end">
@@ -303,7 +303,7 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
                     )}
 
                     {sections.length === 0 ? (
-                        <div className="text-center py-24 border-2 border-dashed border-neutral-800 rounded-lg bg-black/20 backdrop-blur-sm">
+                        <div className="text-center py-24 border-2 border-dashed border-neutral-800 rounded-lg bg-black/20">
                             <div className="text-5xl mb-4 opacity-30 grayscale">🦇</div>
                             <p className="text-neutral-500 font-serif text-xl mb-2">Las páginas están en blanco.</p>
                             <p className="text-neutral-600 text-sm">La historia espera ser escrita.</p>
@@ -353,12 +353,12 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
             {/* ESTILOS DE ANIMACIÓN DE OLAS (Sangre) */}
             <style jsx>{`
                 .ocean {
-                    height: 15%; /* Aumentado para que se vea más como fondo */
+                    height: 120px;
                     width: 100%;
-                    position: fixed; /* Fixed para cubrir la ventana */
+                    position: absolute;
                     bottom: 0;
                     left: 0;
-                    z-index: 0; /* Detrás del contenido */
+                    z-index: 15;
                     overflow: hidden;
                     pointer-events: none;
                 }
@@ -373,13 +373,13 @@ const ChronicleView = ({ saga, initialSections = [], user, onBack }) => {
                     transform: translate3d(0, 0, 0);
                     /* Filtro para convertirlo en rojo sangre oscuro */
                     filter: invert(10%) sepia(86%) saturate(6054%) hue-rotate(352deg) brightness(90%) contrast(124%);
-                    opacity: 0.15; /* Sutil para no distraer */
+                    opacity: 0.4;
                 }
 
                 .wave:nth-of-type(2) {
                     top: -175px;
                     animation: wave 7s cubic-bezier( 0.36, 0.45, 0.63, 0.53) -.125s infinite, swell 7s ease -1.25s infinite;
-                    opacity: 0.25; /* Un poco más visible la segunda ola */
+                    opacity: 0.6;
                 }
 
                 @keyframes wave {
